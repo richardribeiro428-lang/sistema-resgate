@@ -583,16 +583,16 @@
                         if (isNaN(valorTotal)) valorTotal = 0;
 
                         // =========================================================================
-                        // CHAVE ÚNICA: Item, Destino e Validação (Agrupa independentemente de lotes repetidos)
+                        // CHAVE ÚNICA EXATA: Apenas Item + Destino + Validação (ignora o lote para agrupar)
                         // =========================================================================
-                        const chaveUnica = `${item}-${destino}-${validacao}`;
+                        const chaveUnica = `${String(item).trim().toUpperCase()}-${String(destino).trim().toUpperCase()}-${String(validacao).trim().toUpperCase()}`;
                         const itemExistente = window.dadosResgates[pos.nome].find(i => i.chaveUnica === chaveUnica);
 
                         if (itemExistente) {
                             itemExistente.qtd += qtdResgate;
                             itemExistente.valorTotal += valorTotal;
 
-                            // Junta os lotes de forma organizada e limpa, evitando duplicar lotes idênticos
+                            // Acumula os lotes de forma limpa na frente, sem duplicar lotes idênticos
                             const lotesAtuais = String(itemExistente.lote)
                                 .split('/')
                                 .map(l => l.trim())
