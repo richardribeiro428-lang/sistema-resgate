@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Resgate</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap');
+
+        * { box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Montserrat', sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            display: flex;
+            height: 100vh;
+            background-color: #f4f5f7;
+            overflow: hidden;
+        }
+
+        /* --- PAINEL ESQUERDO --- */
+        .left-panel {
+            width: 22%;
+            background-color: #001529;
+            color: white;
+            padding: 50px 25px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .left-panel::before {
+            content: ''; position: absolute; top: -50px; right: -50px;
+            width: 150px; height: 150px; background-color: #e60000;
+            border-radius: 40px; transform: rotate(45deg); z-index: 0;
+        }
+        .left-panel::after {
+            content: ''; position: absolute; bottom: -100px; right: -50px;
+            width: 300px; height: 300px; background-color: #e60000;
+            border-radius: 80px; transform: rotate(15deg); z-index: 0;
+        }
+        
+        .logo-placeholder { font-weight: 800; font-size: 1.5rem; letter-spacing: 2px; margin-bottom: 40px; z-index: 1;}
+        .left-panel h1 { font-size: 2rem; font-weight: 800; line-height: 1.1; margin-bottom: 10px; z-index: 1;}
+        .highlight-red { color: #e60000; }
+        .left-panel > p { color: #a0aec0; font-size: 0.8rem; margin-bottom: 30px; line-height: 1.5; z-index: 1;}
+
+        .menu-lateral { z-index: 1; margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .menu-item {
+            padding: 15px; border-radius: 8px; cursor: pointer;
+            font-weight: 600; color: #a0aec0; transition: all 0.2s;
+            display: flex; align-items: center; gap: 10px; font-size: 0.9rem;
+        }
+        .menu-item:hover { background-color: rgba(255,255,255,0.05); color: #fff; }
+        .menu-item.ativo { background-color: #e60000; color: #fff; }
+
+        /* --- PAINEL DIREITO --- */
+        .right-panel {
+            width: 78%;
+            padding: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-y: auto;
+        }
+
+        .main-card {
+            background: #ffffff;
+            width: 100%;
+            max-width: 1200px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.06);
+            padding: 40px;
+            text-align: center;
+            max-height: 95vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .icon-top {
+            width: 50px; height: 50px; background-color: #f0f4f8; border-radius: 12px;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; color: #001529; margin-bottom: 20px;
+        }
+
+        .main-card h2 { font-size: 1.8rem; color: #001529; margin: 0 0 15px 0; }
+        .red-line { width: 40px; height: 3px; background-color: #e60000; margin: 0 auto 20px auto; }
+        .subtitle { color: #718096; font-size: 1rem; margin-bottom: 30px; }
+
+        /* --- GRID PASTAS --- */
+        .grid-posicoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .card-pasta {
+            border: 1px solid #e2e8f0; border-radius: 16px; padding: 25px 20px;
+            cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center;
+        }
+        .card-pasta:hover { border-color: #cbd5e0; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transform: translateY(-3px); }
+        .card-icon {
+            width: 50px; height: 50px; border-radius: 50%; background-color: #e6f7ff;
+            color: #1890ff; display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; margin-bottom: 15px;
+        }
+        .card-pasta.concluido .card-icon { background-color: #f6ffed; color: #52c41a; }
+        .card-pasta h4 { margin: 0 0 8px 0; font-size: 1rem; color: #2d3748; }
+        .card-pasta p { margin: 0; font-size: 0.8rem; color: #a0aec0; }
+
+        /* Upload & Botão de Exportar */
+        .upload-wrapper { margin-top: 20px; }
+        .dashed-btn {
+            display: block; width: 100%; border: 2px dashed #cbd5e0; border-radius: 12px;
+            padding: 20px; color: #3182ce; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .dashed-btn:hover { border-color: #3182ce; background-color: #ebf8ff; }
+        input[type="file"] { display: none; }
+        
+        .btn-exportar {
+            display: none;
+            width: 100%; background-color: #1890ff; color: white; font-size: 1.1rem; font-weight: bold;
+            padding: 15px; border: none; border-radius: 10px; cursor: pointer; margin-bottom: 20px; transition: background 0.2s;
+        }
+        .btn-exportar:hover { background-color: #096dd9; }
+
+        /* --- TELA DETALHES --- */
+        #view-detalhes { display: none; text-align: left; }
+        .btn-voltar { background: none; border: none; color: #718096; font-size: 1rem; cursor: pointer; padding: 0; margin-bottom: 15px; font-family: inherit; font-weight: 600;}
+        .btn-voltar:hover { color: #2d3748; }
+        
+        .lista-header { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px;}
+        .header-title-row { display: flex; justify-content: space-between; align-items: center; }
+        .header-title-row h3 { margin: 0; color: #001529; font-size: 1.5rem;}
+        
+        /* Abas Internas */
+        .detalhes-tabs { display: flex; gap: 15px; border-bottom: 2px solid #e2e8f0; margin-bottom: 15px; }
+        .detalhes-tab-btn { background: none; border: none; font-size: 1rem; font-weight: 700; color: #a0aec0; padding: 10px 15px; cursor: pointer; font-family: inherit; transition: color 0.2s;}
+        .detalhes-tab-btn.active { color: #001529; border-bottom: 3px solid #3182ce; margin-bottom: -2px; }
+
+        .filtro-box { background-color: #ebf4ff; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; border: 1px solid #bee3f8;}
+        .filtro-box-inner { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; flex-grow: 1; }
+        .filtro-item { display: flex; align-items: center; gap: 5px; }
+        .filtro-item label { font-weight: 700; color: #2b6cb0; font-size: 0.85rem; }
+        .filtro-item select { padding: 6px 10px; border-radius: 6px; border: 1px solid #90cdf4; outline: none; font-family: inherit; font-weight: 600; color: #2c5282; max-width: 250px; font-size: 0.85rem;}
+        
+        /* Dropdown Multi-Select Destino (COM BUSCA) */
+        .dropdown-check-list { position: relative; display: inline-block; width: 250px; }
+        .dropdown-check-list .anchor { padding: 6px 10px; border-radius: 6px; border: 1px solid #90cdf4; cursor: pointer; background: #fff; color: #2c5282; font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; user-select: none; }
+        .dropdown-check-list .items { display: none; position: absolute; top: 100%; left: 0; background: #fff; border: 1px solid #90cdf4; border-radius: 6px; max-height: 300px; overflow-y: auto; width: 100%; z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 0; margin: 5px 0 0 0; }
+        .dropdown-check-list .items.visible { display: block; }
+        .dropdown-check-list .items li { list-style: none; padding: 0; display: flex; align-items: center; font-size: 0.85rem; color: #2d3748; }
+        .dropdown-check-list .items li.dest-item:hover { background-color: #ebf4ff; }
+        .dropdown-check-list .items label { width: 100%; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 500;}
+        .dropdown-check-list .items input[type="checkbox"] { margin: 0; cursor: pointer; }
+        .dropdown-check-list::-webkit-scrollbar { width: 6px; }
+        /* Barra de pesquisa dentro do dropdown */
+        .busca-destino-input { width: 100%; padding: 8px; border: 1px solid #90cdf4; border-radius: 4px; outline: none; font-family: inherit; font-size: 0.85rem; }
+
+        .btn-selecionar-todos { background-color: #3182ce; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: background 0.2s; }
+        .btn-selecionar-todos:hover { background-color: #2b6cb0; }
+        .btn-desfazer-todos { background-color: #718096; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: background 0.2s; }
+        .btn-desfazer-todos:hover { background-color: #4a5568; }
+
+        .lista-itens { list-style: none; padding: 0; margin: 0; max-height: 500px; overflow-y: auto; padding-right: 5px;}
+        .lista-itens::-webkit-scrollbar { width: 8px; }
+        .lista-itens::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .lista-itens::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
+        .lista-itens::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
+        
+        .item-row { padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; display: flex; align-items: center; gap: 15px; }
+        .item-row.marcado { opacity: 0.6; background-color: #f7fafc; }
+        .item-row input[type="checkbox"] { width: 22px; height: 22px; cursor: pointer; accent-color: #e60000; }
+        
+        .item-dados { flex-grow: 1; font-size: 0.95rem; color: #4a5568;}
+        .item-dados strong { color: #38a169; } 
+        
+        .badge-qtd { background-color: #ed8936; color: white; padding: 5px 12px; border-radius: 12px; font-size: 0.9rem; font-weight: bold; }
+        .badge-destino { color: #805ad5; font-weight: bold; }
+        .badge-valid { color: #e60000; font-weight: bold; }
+        .destino-col { min-width: 190px; max-width: 240px; text-align: right; margin-left: auto; }
+        .destino-col-label { display:block; font-size:0.72rem; color:#a0aec0; font-weight:700; text-transform:uppercase; margin-bottom:4px; }
+        .destino-copiavel { color:#5b21b6; font-weight:800; font-size:0.95rem; user-select:text; cursor:text; }
+        .btn-copiar-destinos { background:#805ad5; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; }
+        .btn-copiar-destinos:hover { background:#6b46c1; }
+        .historico-lista { display:grid; gap:12px; text-align:left; }
+        .historico-card { border:1px solid #e2e8f0; border-radius:12px; padding:16px; display:flex; justify-content:space-between; align-items:center; gap:15px; }
+        .historico-card h4 { margin:0 0 5px; color:#001529; }
+        .historico-card p { margin:0; color:#718096; font-size:0.82rem; }
+        .historico-acoes { display:flex; gap:8px; flex-wrap:wrap; }
+        .btn-historico { border:none; border-radius:7px; padding:8px 12px; cursor:pointer; font-family:inherit; font-weight:700; }
+        .btn-abrir-historico { background:#3182ce; color:white; }
+        .btn-excluir-historico { background:#ffe5e5; color:#e60000; }
+        .btn-arquivar { width:100%; background:#805ad5; color:white; border:none; padding:14px; border-radius:9px; cursor:pointer; margin-top:10px; font-family:inherit; font-weight:800; font-size:1rem; }
+        .btn-arquivar:hover { background:#6b46c1; }
+        .btn-novo-resgate { width:100%; background:#e60000; color:white; border:none; padding:14px; border-radius:9px; cursor:pointer; margin-bottom:18px; font-family:inherit; font-weight:800; font-size:1rem; }
+        .btn-novo-resgate:hover { background:#c90000; }
+        .modo-historico { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; padding:9px 12px; border-radius:7px; font-size:0.82rem; font-weight:700; margin-bottom:12px; }
+
+        .btn-falta { background-color: #ffe5e5; color: #e60000; border: 1px solid #ffcccc; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;}
+        .btn-falta:hover { background-color: #e60000; color: white; }
+
+        /* --- DASHBOARD --- */
+        #view-dashboard { display: none; text-align: left; width: 100%; }
+        
+        .dash-tabs { display: flex; gap: 15px; border-bottom: 2px solid #e2e8f0; margin-bottom: 25px; }
+        .dash-tab-btn { background: none; border: none; font-size: 1.05rem; font-weight: 700; color: #a0aec0; padding: 10px 15px; cursor: pointer; font-family: inherit; transition: color 0.2s;}
+        .dash-tab-btn.active { color: #001529; border-bottom: 3px solid #e60000; margin-bottom: -2px; }
+
+        .dashboard-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+        .dashboard-table th { background-color: #002060; color: white; padding: 15px; text-align: center; border: 1px solid white;}
+        .dashboard-table td { background-color: #0070C0; color: white; padding: 12px 15px; border: 1px solid white; }
+        .dashboard-table td:first-child { text-align: left; font-weight: 700; }
+        .center-cell { text-align: center; font-weight: 600; }
+        .val-cell { display: flex; justify-content: space-between; font-weight: 600; }
+        .row-total td { background-color: #00B050 !important; font-weight: 700; font-size: 1.05rem; border: none; }
+        
+        .prog-container { display: flex; align-items: center; gap: 10px; }
+        .prog-bg { flex-grow: 1; height: 8px; background-color: rgba(255,255,255,0.3); border-radius: 4px; overflow: hidden; }
+        .prog-fill { height: 100%; background-color: #00ff66; transition: width 0.3s; }
+        
+        .charts-wrapper { display: none; justify-content: space-around; flex-wrap: wrap; gap: 20px; }
+        .chart-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; width: 45%; min-width: 300px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02);}
+        .chart-box h4 { margin: 0 0 15px 0; color: #2d3748; font-size: 1.1rem; }
+        
+        .empty-dash { text-align: center; color: #a0aec0; padding: 50px 0; }
+    </style>
+</head>
+<body>
+
+    <div class="left-panel">
+        <div class="logo-placeholder"> LOGO </div>
+        <h1>Sistema de <br><span class="highlight-red">Resgate</span></h1>
+        <p>Controle, precisão e eficiência em cada etapa da gestão.</p>
+        
+        <div class="menu-lateral">
+            <div class="menu-item ativo" id="menu-home" onclick="mudarAba('home')">
+                <span>📋</span> Planejamento e Resgate
+            </div>
+            <div class="menu-item" id="menu-dash" onclick="mudarAba('dashboard')">
+                <span>📊</span> Dashboard Financeiro
+            </div>
+            <div class="menu-item" id="menu-historico" onclick="mudarAba('historico')">
+                <span>🗂️</span> Histórico
+            </div>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <div class="main-card">
+            
+            <!-- TELA HOME -->
+            <div id="view-home">
+                <button class="btn-novo-resgate" id="btn-novo-resgate" onclick="iniciarNovoResgate()" style="display:none;">＋ Iniciar novo resgate</button>
+                <div class="icon-top">🏢</div>
+                <h2>Qual posição irá processar hoje?</h2>
+                <div class="red-line"></div>
+                <p class="subtitle" id="subtitle-text">Faça o upload da planilha para carregar os locais de resgate.</p>
+                <div id="status-nuvem" style="margin:-10px 0 20px 0; font-size:0.85rem; font-weight:700; color:#3182ce;">☁️ Conectando ao banco...</div>
+
+                <div class="grid-posicoes" id="view-posicoes"></div>
+
+                <button class="btn-exportar" id="btn-exportar" onclick="exportarExcel()">📥 Exportar Relação de Resgates (Excel)</button>
+                <button class="btn-arquivar" id="btn-arquivar" onclick="arquivarResgate()" style="display:none;">🗄️ Finalizar e arquivar resgate</button>
+
+                <div class="upload-wrapper">
+                    <label for="excel-file" class="dashed-btn">
+                        <span>⊕</span> <text id="upload-text">Adicionar planilha de ganhos</text>
+                    </label>
+                    <input type="file" id="excel-file" accept=".xlsx, .xls, .xlsm" />
+                </div>
+
+                <button type="button" onclick="limparDadosSalvos()" style="margin-top:10px; background:#fff; color:#e60000; border:1px solid #e60000; padding:10px 16px; border-radius:8px; cursor:pointer; font-family:inherit; font-weight:600;">
+                    🗑️ Limpar dados salvos na nuvem
+                </button>
+            </div>
+
+            <!-- TELA DETALHES -->
+            <div id="view-detalhes">
+                <button class="btn-voltar" onclick="voltarParaPastas()">&#8592; Voltar para posições</button>
+                
+                <div class="lista-header">
+                    <div class="header-title-row">
+                        <h3 id="detalhes-titulo">Nome da Posição</h3>
+                        <span id="detalhes-stats" style="color: #718096; font-size: 0.9rem; font-weight: 600;"></span>
+                    </div>
+
+                    <!-- Abas Pendentes / Resgatados -->
+                    <div class="detalhes-tabs">
+                        <button class="detalhes-tab-btn active" id="tab-pendentes" onclick="mudarAbaDetalhes('pendentes')">Pendentes (<span id="qtd-pendentes">0</span>)</button>
+                        <button class="detalhes-tab-btn" id="tab-resgatados" onclick="mudarAbaDetalhes('resgatados')">Resgatados (<span id="qtd-resgatados">0</span>)</button>
+                    </div>
+                    
+                    <div class="filtro-box">
+                        <div class="filtro-box-inner">
+                            <div class="filtro-item">
+                                <label>Validação:</label>
+                                <select id="filtro-validacao" onchange="renderizarListaItens()">
+                                    <option value="TODOS">Todas (Ver Todos)</option>
+                                </select>
+                            </div>
+                            <div class="filtro-item">
+                                <label>Destinos:</label>
+                                <div id="dropdown-destino" class="dropdown-check-list">
+                                    <div class="anchor" onclick="toggleDropdownDestino()">
+                                        <span id="lbl-destinos-selecionados">Todos</span>
+                                        <span>▼</span>
+                                    </div>
+                                    <!-- A lista ganhará o input de pesquisa dinamicamente -->
+                                    <ul id="lista-destinos-chk" class="items"></ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                            <button class="btn-copiar-destinos" onclick="copiarDestinosVisiveis()">📋 Copiar destinos</button>
+                            <button id="btn-acao-massa" class="btn-selecionar-todos" onclick="acaoTodosVisiveis()">☑ Selecionar Todos</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="detalhes-conteudo"></div>
+            </div>
+
+            <!-- TELA HISTÓRICO -->
+            <div id="view-historico" style="display:none; text-align:left; width:100%;">
+                <div class="icon-top">🗂️</div>
+                <h2>Histórico de Resgates</h2>
+                <div class="red-line"></div>
+                <p class="subtitle">Resgates finalizados e arquivados no banco de dados.</p>
+                <div id="historico-conteudo"><div class="empty-dash">Carregando histórico...</div></div>
+            </div>
+
+            <!-- TELA DASHBOARD -->
+            <div id="view-dashboard">
+                <div class="icon-top">📈</div>
+                <h2>Visão Geral de Ganhos</h2>
+                <div class="red-line"></div>
+                
+                <div id="dashboard-conteudo">
+                    <div class="empty-dash">Por favor, carregue uma planilha na aba "Início" para visualizar os dados.</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const mapeamentoColunas = [
+            { nome: "RECUSA.LOG", indexQtd: 13, indexValor: 27 },
+            { nome: "DPC.SOBRA.IRDR", indexQtd: 14, indexValor: 28 },
+            { nome: "DIVREC", indexQtd: 15, indexValor: 29 },
+            { nome: "IPP.EQUALIZAÇÃO", indexQtd: 16, indexValor: 30 },
+            { nome: "IRDR.INDUSTRIA", indexQtd: 17, indexValor: 31 },
+            { nome: "IRDR.TRANSPORTES", indexQtd: 18, indexValor: 32 },
+            { nome: "SOBRA.DEV.RECEB", indexQtd: 19, indexValor: 33 },
+            { nome: "SOBRECEBIMENTO", indexQtd: 20, indexValor: 34 },
+            { nome: "Ganho", indexQtd: 21, indexValor: 35 }
+        ];
+
+        window.dadosResgates = {};
+        window.posicaoAtual = '';
+        window.planilhaCarregada = false;
+        window.abaDetalhes = 'pendentes';
+        window.modoHistorico = false;
+        window.nomeHistoricoAtual = '';
+        
+        let graficoItens = null;
+        let graficoFinanceiro = null;
+
+
+        // ============================================================
+        // BANCO DE DADOS ONLINE - SUPABASE
+        // Coloque aqui a URL e a PUBLISHABLE KEY do seu projeto.
+        // Nunca use a secret/service_role key neste arquivo.
+        // ============================================================
+        const SUPABASE_URL = 'https://crzrrhuhmspqeyttcquv.supabase.co';
+        const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_rH09rME7m1pYHh3IIJd0IA_-_5dMjlg';
+
+        let supabaseClient = null;
+        const ID_ESTADO = 'principal';
+
+        function bancoConfigurado() {
+            return SUPABASE_URL.startsWith('https://')
+                && !SUPABASE_URL.includes('COLE_AQUI')
+                && !SUPABASE_PUBLISHABLE_KEY.includes('COLE_AQUI');
+        }
+
+        function iniciarBanco() {
+            if (!bancoConfigurado()) return false;
+            try {
+                supabaseClient = window.supabase.createClient(
+                    SUPABASE_URL,
+                    SUPABASE_PUBLISHABLE_KEY
+                );
+                return true;
+            } catch (erro) {
+                console.error('Erro ao iniciar Supabase:', erro);
+                return false;
+            }
+        }
+
+        async function salvarEstado() {
+            if (!supabaseClient) {
+                atualizarStatusNuvem('⚠️ Banco não configurado');
+                return false;
+            }
+
+            try {
+                const estado = {
+                    dadosResgates: window.dadosResgates,
+                    posicaoAtual: window.posicaoAtual,
+                    planilhaCarregada: window.planilhaCarregada,
+                    abaDetalhes: window.abaDetalhes,
+                    salvoEm: new Date().toISOString()
+                };
+
+                const { error } = await supabaseClient
+                    .from('sistema_resgate')
+                    .upsert({
+                        id: ID_ESTADO,
+                        dados: estado,
+                        atualizado_em: new Date().toISOString()
+                    });
+
+                if (error) throw error;
+
+                atualizarStatusNuvem('☁️ Salvo na nuvem');
+                return true;
+            } catch (erro) {
+                console.error('Erro ao salvar no Supabase:', erro);
+                atualizarStatusNuvem('⚠️ Erro ao salvar');
+                return false;
+            }
+        }
+
+        async function carregarEstadoSalvo() {
+            if (!iniciarBanco()) {
+                atualizarStatusNuvem('⚠️ Configure o banco Supabase');
+                return false;
+            }
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('sistema_resgate')
+                    .select('dados, atualizado_em')
+                    .eq('id', ID_ESTADO)
+                    .maybeSingle();
+
+                if (error) throw error;
+
+                if (!data || !data.dados) {
+                    atualizarStatusNuvem('☁️ Banco conectado — nenhum dado salvo');
+                    return false;
+                }
+
+                const estado = data.dados;
+
+                if (!estado.dadosResgates || typeof estado.dadosResgates !== 'object') {
+                    return false;
+                }
+
+                window.dadosResgates = estado.dadosResgates;
+                window.posicaoAtual = estado.posicaoAtual || '';
+                window.planilhaCarregada = estado.planilhaCarregada === true;
+                window.abaDetalhes = estado.abaDetalhes || 'pendentes';
+
+                if (window.planilhaCarregada) {
+                    document.getElementById('upload-text').innerText = "Atualizar planilha de ganhos";
+                    document.getElementById('subtitle-text').innerText = "Dados recuperados da nuvem.";
+                    renderizarPastas();
+                }
+
+                atualizarStatusNuvem('☁️ Dados carregados da nuvem');
+                return true;
+            } catch (erro) {
+                console.error('Erro ao carregar dados do Supabase:', erro);
+                atualizarStatusNuvem('⚠️ Erro ao conectar ao banco');
+                return false;
+            }
+        }
+
+        async function limparDadosSalvos() {
+            if (!supabaseClient) {
+                alert('Configure o Supabase primeiro.');
+                return;
+            }
+
+            if (!confirm('Tem certeza que deseja apagar os dados salvos na nuvem?')) return;
+
+            try {
+                const { error } = await supabaseClient
+                    .from('sistema_resgate')
+                    .delete()
+                    .eq('id', ID_ESTADO);
+
+                if (error) throw error;
+
+                window.dadosResgates = {};
+                window.posicaoAtual = '';
+                window.planilhaCarregada = false;
+                window.abaDetalhes = 'pendentes';
+                window.modoHistorico = false;
+                window.nomeHistoricoAtual = '';
+
+                document.getElementById('view-detalhes').style.display = 'none';
+                document.getElementById('view-dashboard').style.display = 'none';
+                document.getElementById('view-home').style.display = 'block';
+                document.getElementById('view-posicoes').innerHTML = '';
+                document.getElementById('btn-exportar').style.display = 'none';
+                document.getElementById('upload-text').innerText = "Adicionar planilha de ganhos";
+                document.getElementById('subtitle-text').innerText = "Faça o upload da planilha para carregar os locais de resgate.";
+
+                atualizarStatusNuvem('☁️ Banco vazio');
+                alert('Dados da nuvem apagados com sucesso.');
+            } catch (erro) {
+                console.error(erro);
+                alert('Não foi possível apagar os dados da nuvem.');
+            }
+        }
+
+        function atualizarStatusNuvem(texto) {
+            const el = document.getElementById('status-nuvem');
+            if (el) el.innerText = texto;
+        }
+
+        function mudarAba(aba) {
+            document.getElementById('menu-home').classList.remove('ativo');
+            document.getElementById('menu-dash').classList.remove('ativo');
+            document.getElementById('menu-historico').classList.remove('ativo');
+            document.getElementById('view-home').style.display = 'none';
+            document.getElementById('view-detalhes').style.display = 'none';
+            document.getElementById('view-dashboard').style.display = 'none';
+            document.getElementById('view-historico').style.display = 'none';
+
+            if (aba === 'home') {
+                document.getElementById('menu-home').classList.add('ativo');
+                document.getElementById('view-home').style.display = 'block';
+                if(window.planilhaCarregada) renderizarPastas();
+            } else if (aba === 'dashboard') {
+                document.getElementById('menu-dash').classList.add('ativo');
+                document.getElementById('view-dashboard').style.display = 'block';
+                if (window.planilhaCarregada) renderizarDashboard();
+            } else if (aba === 'historico') {
+                document.getElementById('menu-historico').classList.add('ativo');
+                document.getElementById('view-historico').style.display = 'block';
+                carregarHistorico();
+            }
+        }
+
+        document.getElementById('excel-file').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('upload-text').innerText = "Atualizar planilha de ganhos";
+            document.getElementById('subtitle-text').innerText = "Selecione a posição de resgate que deseja acessar. Produtos com mesma validação e destino são agrupados por produto.";
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                if(!workbook.Sheets["Ganho"]) { alert('Aba "Ganho" não encontrada!'); return; }
+
+                const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets["Ganho"], {header: 1}); 
+                processarDados(jsonData);
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function processarDados(linhas) {
+            window.dadosResgates = {};
+            mapeamentoColunas.forEach(pos => window.dadosResgates[pos.nome] = []);
+
+            for (let i = 2; i < linhas.length; i++) {
+                const linha = linhas[i];
+                if (!linha || linha.length === 0) continue;
+
+                const item = linha[3]; 
+                if (!item || item === '-' || item === 'ITEM') continue;
+
+                const lote = linha[5] || '-';
+                const destino = linha[11] || 'ND';
+                const validacao = linha[39] || '#N/D';
+
+                mapeamentoColunas.forEach(pos => {
+                    const qtdResgate = parseFloat(linha[pos.indexQtd]);
+                    if (qtdResgate > 0) {
+                        let valorTotal = parseFloat(linha[pos.indexValor]);
+                        if (isNaN(valorTotal)) valorTotal = 0;
+
+                        // Agrupa o mesmo produto quando a VALIDAÇÃO e o DESTINO
+                        // são iguais, mesmo que existam vários lotes.
+                        // Assim o usuário faz o resgate apenas uma vez.
+                        const chaveUnica = `${item}-${destino}-${validacao}`;
+                        const itemExistente = window.dadosResgates[pos.nome].find(i => i.chaveUnica === chaveUnica);
+
+                        if (itemExistente) {
+                            itemExistente.qtd += qtdResgate;
+                            itemExistente.valorTotal += valorTotal;
+
+                            // Junta os lotes sem repetir o mesmo lote.
+                            const lotesAtuais = String(itemExistente.lote)
+                                .split(' / ')
+                                .map(l => l.trim())
+                                .filter(Boolean);
+
+                            if (lote && !lotesAtuais.includes(String(lote).trim())) {
+                                lotesAtuais.push(String(lote).trim());
+                                itemExistente.lote = lotesAtuais.join(' / ');
+                            }
+                        } else {
+                            window.dadosResgates[pos.nome].push({
+                                chaveUnica: chaveUnica,
+                                item: item,
+                                lote: lote,
+                                destino: destino,
+                                qtd: qtdResgate,
+                                valorTotal: valorTotal,
+                                checado: false,
+                                validacao: validacao,
+                                indisponivel: false
+                            });
+                        }
+                    }
+                });
+            }
+
+            // Ordena os itens (Primeiro Destino A-Z, depois Item)
+            mapeamentoColunas.forEach(pos => {
+                window.dadosResgates[pos.nome].sort((a, b) => {
+                    const destA = String(a.destino).toUpperCase();
+                    const destB = String(b.destino).toUpperCase();
+                    if (destA < destB) return -1;
+                    if (destA > destB) return 1;
+                    
+                    const itemA = String(a.item).toUpperCase();
+                    const itemB = String(b.item).toUpperCase();
+                    if (itemA < itemB) return -1;
+                    if (itemA > itemB) return 1;
+                    return 0;
+                });
+            });
+
+            window.planilhaCarregada = true;
+            salvarEstado();
+            renderizarPastas();
+        }
+
+        function verificarTotalGeral() {
+            let totalItens = 0;
+            mapeamentoColunas.forEach(pos => totalItens += window.dadosResgates[pos.nome].length);
+            const btnExportar = document.getElementById('btn-exportar');
+            btnExportar.style.display = totalItens > 0 ? 'block' : 'none';
+        }
+
+        function renderizarPastas() {
+            document.getElementById('view-detalhes').style.display = 'none';
+            document.getElementById('view-home').style.display = 'block';
+            const btnNovo = document.getElementById('btn-novo-resgate');
+            const btnArquivar = document.getElementById('btn-arquivar');
+            btnNovo.style.display = window.modoHistorico ? 'block' : 'none';
+            btnArquivar.style.display = (window.planilhaCarregada && !window.modoHistorico) ? 'block' : 'none';
+            if (window.modoHistorico) {
+                document.getElementById('subtitle-text').innerText = `Visualização do histórico: ${window.nomeHistoricoAtual}`;
+            }
+
+            const container = document.getElementById('view-posicoes');
+            container.innerHTML = '';
+
+            mapeamentoColunas.forEach(pos => {
+                const itensValidos = window.dadosResgates[pos.nome].filter(i => !i.indisponivel);
+                
+                if (itensValidos.length > 0) {
+                    const concluidos = itensValidos.filter(i => i.checado).length;
+                    const isConcluido = itensValidos.length === concluidos;
+                    const card = document.createElement('div');
+                    card.className = `card-pasta ${isConcluido ? 'concluido' : ''}`;
+                    card.onclick = () => abrirPosicao(pos.nome); 
+                    card.innerHTML = `
+                        <div class="card-icon">${isConcluido ? '✔' : '📋'}</div>
+                        <h4>${pos.nome}</h4>
+                        <p>${isConcluido ? 'Concluído' : `${concluidos} de ${itensValidos.length} resgatados`}</p>`;
+                    container.appendChild(card);
+                } else if (window.dadosResgates[pos.nome].length > 0) {
+                    const card = document.createElement('div');
+                    card.className = `card-pasta concluido`;
+                    card.onclick = () => abrirPosicao(pos.nome); 
+                    card.innerHTML = `<div class="card-icon">✔</div><h4>${pos.nome}</h4><p>Sem itens válidos</p>`;
+                    container.appendChild(card);
+                }
+            });
+
+            verificarTotalGeral();
+        }
+
+        function mudarAbaDetalhes(aba) {
+            window.abaDetalhes = aba;
+            document.getElementById('tab-pendentes').classList.remove('active');
+            document.getElementById('tab-resgatados').classList.remove('active');
+            
+            if(aba === 'pendentes') {
+                document.getElementById('tab-pendentes').classList.add('active');
+                document.getElementById('btn-acao-massa').className = 'btn-selecionar-todos';
+                document.getElementById('btn-acao-massa').innerHTML = '☑ Selecionar Todos';
+            } else {
+                document.getElementById('tab-resgatados').classList.add('active');
+                document.getElementById('btn-acao-massa').className = 'btn-desfazer-todos';
+                document.getElementById('btn-acao-massa').innerHTML = '☐ Desfazer Todos';
+            }
+            renderizarListaItens();
+        }
+
+        function abrirPosicao(posicaoNome) {
+            document.getElementById('view-home').style.display = 'none';
+            document.getElementById('view-detalhes').style.display = 'block';
+            document.getElementById('detalhes-titulo').innerText = `${window.modoHistorico ? 'Histórico' : 'Resgate'}: ${posicaoNome}`;
+            const oldBanner = document.getElementById('modo-historico-banner');
+            if (oldBanner) oldBanner.remove();
+            if (window.modoHistorico) {
+                const banner = document.createElement('div');
+                banner.id = 'modo-historico-banner';
+                banner.className = 'modo-historico';
+                banner.innerText = `🗂️ Visualização somente leitura — ${window.nomeHistoricoAtual}`;
+                document.getElementById('detalhes-titulo').parentElement.parentElement.insertBefore(banner, document.getElementById('detalhes-titulo').parentElement);
+            }
+
+            window.posicaoAtual = posicaoNome;
+            window.abaDetalhes = 'pendentes'; 
+            document.getElementById('tab-pendentes').classList.add('active');
+            document.getElementById('tab-resgatados').classList.remove('active');
+            document.getElementById('btn-acao-massa').className = 'btn-selecionar-todos';
+            document.getElementById('btn-acao-massa').innerHTML = '☑ Selecionar Todos';
+            document.getElementById('btn-acao-massa').style.display = window.modoHistorico ? 'none' : 'block';
+
+            const itensValidos = window.dadosResgates[posicaoNome].filter(i => !i.indisponivel);
+            
+            // Popula Validações
+            const validacoesUnicas = [...new Set(itensValidos.map(i => i.validacao))];
+            let selectVal = '<option value="TODOS">Todas (Ver Todos)</option>';
+            validacoesUnicas.forEach(v => selectVal += `<option value="${v}">${v}</option>`);
+            document.getElementById('filtro-validacao').innerHTML = selectVal;
+            document.getElementById('filtro-validacao').value = 'TODOS'; 
+
+            // Popula Destinos com Caixa de Pesquisa Fixa
+            const destinosUnicos = [...new Set(itensValidos.map(i => i.destino))].sort((a, b) => a.localeCompare(b));
+            let destHtml = `<li style="position: sticky; top: 0; background: #fff; z-index: 2; padding: 10px; border-bottom: 1px solid #e2e8f0;">
+                                <input type="text" id="busca-destino" class="busca-destino-input" placeholder="Pesquisar destino..." onkeyup="filtrarDropdownDestino()">
+                            </li>`;
+            
+            destinosUnicos.forEach(d => {
+                destHtml += `<li class="dest-item"><label><input type="checkbox" value="${d}" class="chk-destino" onchange="atualizarFiltroDestino()"> ${d}</label></li>`;
+            });
+            document.getElementById('lista-destinos-chk').innerHTML = destHtml;
+            document.getElementById('lbl-destinos-selecionados').innerText = 'Todos';
+
+            const dropdown = document.getElementById('lista-destinos-chk');
+            if(dropdown) dropdown.classList.remove('visible');
+
+            renderizarListaItens();
+        }
+
+        // Funções para controle do Multi-Select Destino
+        function toggleDropdownDestino() {
+            document.getElementById('lista-destinos-chk').classList.toggle('visible');
+        }
+
+        // Pesquisa inteligente dentro do dropdown
+        function filtrarDropdownDestino() {
+            const input = document.getElementById('busca-destino');
+            const filter = input.value.toUpperCase();
+            const ul = document.getElementById('lista-destinos-chk');
+            const li = ul.getElementsByClassName('dest-item');
+
+            for (let i = 0; i < li.length; i++) {
+                const label = li[i].getElementsByTagName('label')[0];
+                const txtValue = label.textContent || label.innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    li[i].style.display = "";
+                } else {
+                    li[i].style.display = "none";
+                }
+            }
+        }
+
+        window.onclick = function(e) {
+            if (!e.target.closest('.dropdown-check-list')) {
+                const dropdown = document.getElementById('lista-destinos-chk');
+                if (dropdown && dropdown.classList.contains('visible')) {
+                    dropdown.classList.remove('visible');
+                }
+            }
+        }
+
+        function atualizarFiltroDestino() {
+            const checkboxes = document.querySelectorAll('.chk-destino');
+            const selecionados = Array.from(checkboxes).filter(c => c.checked).map(c => c.value);
+            const label = document.getElementById('lbl-destinos-selecionados');
+            
+            if (selecionados.length === 0) {
+                label.innerText = 'Todos';
+            } else if (selecionados.length === 1) {
+                label.innerText = selecionados[0];
+            } else {
+                label.innerText = `${selecionados.length} selecionados`;
+            }
+            renderizarListaItens();
+        }
+
+        function renderizarListaItens() {
+            const posicaoNome = window.posicaoAtual;
+            const filtroVal = document.getElementById('filtro-validacao').value;
+            
+            const chksDestino = document.querySelectorAll('.chk-destino');
+            const destSelecionados = Array.from(chksDestino).filter(c => c.checked).map(c => c.value);
+
+            const itens = window.dadosResgates[posicaoNome];
+            
+            let listaHtml = '<ul class="lista-itens">';
+            let qtdFiltrada = 0;
+            let somaPecas = 0;
+            
+            let countPendentes = 0;
+            let countResgatados = 0;
+
+            itens.forEach((itemObj, index) => {
+                if (itemObj.indisponivel) return;
+
+                if(itemObj.checado) countResgatados++;
+                else countPendentes++;
+
+                if (window.abaDetalhes === 'pendentes' && itemObj.checado) return;
+                if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return;
+
+                if (filtroVal !== 'TODOS' && itemObj.validacao !== filtroVal) return;
+                if (destSelecionados.length > 0 && !destSelecionados.includes(itemObj.destino)) return;
+                
+                qtdFiltrada++;
+                somaPecas += itemObj.qtd;
+                const checado = itemObj.checado ? 'checked' : '';
+                const classeMarcado = itemObj.checado ? 'marcado' : '';
+                
+                const somenteLeitura = window.modoHistorico ? 'disabled' : '';
+                const btnFalta = window.modoHistorico ? '' : `<button class="btn-falta" onclick="marcarIndisponivel('${posicaoNome}', ${index})" title="Remover item da lista">🚫 Falta</button>`;
+                listaHtml += `
+                    <li class="item-row ${classeMarcado}">
+                        <input type="checkbox" ${checado} ${somenteLeitura} onchange="alternarCheck('${posicaoNome}', ${index})">
+                        <div class="item-dados">
+                            <strong>Item:</strong> ${itemObj.item} &nbsp;|&nbsp; <strong>Lote:</strong> ${itemObj.lote} <br>
+                            <span style="font-size: 0.85rem; color: #718096; display: inline-block; margin-top: 6px;">
+                                Validação: <span class="badge-valid">${itemObj.validacao}</span>
+                            </span>
+                        </div>
+                        <div class="destino-col">
+                            <span class="destino-col-label">Destino</span>
+                            <span class="destino-copiavel">${itemObj.destino}</span>
+                        </div>
+                        <span class="badge-qtd">Qtd: ${itemObj.qtd}</span>
+                        ${btnFalta}
+                    </li>`;
+            });
+            listaHtml += '</ul>';
+            
+            document.getElementById('qtd-pendentes').innerText = countPendentes;
+            document.getElementById('qtd-resgatados').innerText = countResgatados;
+
+            document.getElementById('detalhes-conteudo').innerHTML = listaHtml;
+            document.getElementById('detalhes-stats').innerText = `${qtdFiltrada} item(ns) na lista | ${somaPecas} peças`;
+        }
+
+        function alternarCheck(posicaoNome, index) {
+            if (window.modoHistorico) return;
+            const scrollContainer = document.querySelector('.lista-itens');
+            const scrollPos = scrollContainer ? scrollContainer.scrollTop : 0;
+
+            window.dadosResgates[posicaoNome][index].checado = !window.dadosResgates[posicaoNome][index].checado;
+            salvarEstado();
+            renderizarListaItens(); 
+
+            const novoContainer = document.querySelector('.lista-itens');
+            if (novoContainer) novoContainer.scrollTop = scrollPos;
+        }
+
+        function acaoTodosVisiveis() {
+            if (window.modoHistorico) return;
+            const posicaoNome = window.posicaoAtual;
+            const filtroVal = document.getElementById('filtro-validacao').value;
+            const chksDestino = document.querySelectorAll('.chk-destino');
+            const destSelecionados = Array.from(chksDestino).filter(c => c.checked).map(c => c.value);
+            
+            const itens = window.dadosResgates[posicaoNome];
+            const estadoNovo = window.abaDetalhes === 'pendentes' ? true : false;
+
+            itens.forEach((itemObj) => {
+                if (itemObj.indisponivel) return;
+                
+                if (window.abaDetalhes === 'pendentes' && itemObj.checado) return;
+                if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return;
+                
+                if (filtroVal !== 'TODOS' && itemObj.validacao !== filtroVal) return;
+                if (destSelecionados.length > 0 && !destSelecionados.includes(itemObj.destino)) return;
+
+                itemObj.checado = estadoNovo;
+            });
+
+            salvarEstado();
+            renderizarListaItens();
+        }
+
+        function marcarIndisponivel(posicaoNome, index) {
+            if (window.modoHistorico) return;
+            const numeroItem = window.dadosResgates[posicaoNome][index].item;
+            if (confirm(`Tem certeza que deseja marcar o Item ${numeroItem} como FALTA?\n\nEle sairá do controle e constará como Falta no relatório em excel.`)) {
+                window.dadosResgates[posicaoNome][index].indisponivel = true;
+                window.dadosResgates[posicaoNome][index].checado = false;
+                salvarEstado();
+                renderizarListaItens();
+            }
+        }
+
+        function voltarParaPastas() { renderizarPastas(); }
+
+        async function copiarDestinosVisiveis() {
+            const posicaoNome = window.posicaoAtual;
+            const filtroVal = document.getElementById('filtro-validacao').value;
+            const chksDestino = document.querySelectorAll('.chk-destino');
+            const destSelecionados = Array.from(chksDestino).filter(c => c.checked).map(c => c.value);
+            const itens = window.dadosResgates[posicaoNome] || [];
+            const destinos = itens.filter(itemObj => {
+                if (itemObj.indisponivel) return false;
+                if (window.abaDetalhes === 'pendentes' && itemObj.checado) return false;
+                if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return false;
+                if (filtroVal !== 'TODOS' && itemObj.validacao !== filtroVal) return false;
+                if (destSelecionados.length > 0 && !destSelecionados.includes(itemObj.destino)) return false;
+                return true;
+            }).map(i => i.destino);
+
+            if (!destinos.length) { alert('Nenhum destino visível para copiar.'); return; }
+            try {
+                await navigator.clipboard.writeText(destinos.join('\n'));
+                atualizarStatusNuvem(`📋 ${destinos.length} destino(s) copiado(s)`);
+            } catch (erro) {
+                const area = document.createElement('textarea');
+                area.value = destinos.join('\n');
+                document.body.appendChild(area);
+                area.select();
+                document.execCommand('copy');
+                area.remove();
+                alert(`${destinos.length} destino(s) copiado(s).`);
+            }
+        }
+
+        async function arquivarResgate() {
+            if (!supabaseClient || !window.planilhaCarregada) return;
+            const nome = prompt('Digite um nome para este resgate finalizado:', `Resgate ${new Date().toLocaleDateString('pt-BR')}`);
+            if (!nome || !nome.trim()) return;
+
+            try {
+                const snapshot = {
+                    dadosResgates: window.dadosResgates,
+                    planilhaCarregada: true,
+                    abaDetalhes: 'pendentes',
+                    nome: nome.trim(),
+                    arquivadoEm: new Date().toISOString()
+                };
+                const { error } = await supabaseClient.from('resgate_historico').insert({
+                    nome: nome.trim(),
+                    dados: snapshot,
+                    criado_em: new Date().toISOString()
+                });
+                if (error) throw error;
+
+                await supabaseClient.from('sistema_resgate').delete().eq('id', ID_ESTADO);
+                window.dadosResgates = {};
+                window.posicaoAtual = '';
+                window.planilhaCarregada = false;
+                window.modoHistorico = false;
+                window.nomeHistoricoAtual = '';
+                document.getElementById('excel-file').value = '';
+                document.getElementById('upload-text').innerText = 'Adicionar planilha de ganhos';
+                document.getElementById('subtitle-text').innerText = 'Resgate arquivado. Você já pode iniciar outro.';
+                renderizarPastas();
+                atualizarStatusNuvem('☁️ Resgate arquivado com sucesso');
+                alert('Resgate arquivado com sucesso! Agora você pode iniciar um novo.');
+            } catch (erro) {
+                console.error(erro);
+                alert('Não foi possível arquivar. Verifique a tabela resgate_historico no Supabase.');
+            }
+        }
+
+        async function carregarHistorico() {
+            const container = document.getElementById('historico-conteudo');
+            container.innerHTML = '<div class="empty-dash">Carregando histórico...</div>';
+            if (!supabaseClient) { container.innerHTML = '<div class="empty-dash">Banco não conectado.</div>'; return; }
+            try {
+                const { data, error } = await supabaseClient.from('resgate_historico').select('id,nome,criado_em').order('criado_em', { ascending:false });
+                if (error) throw error;
+                if (!data || !data.length) {
+                    container.innerHTML = '<div class="empty-dash">Nenhum resgate arquivado ainda.</div>';
+                    return;
+                }
+                container.innerHTML = `<div class="historico-lista">${data.map(h => `
+                    <div class="historico-card">
+                        <div><h4>🗂️ ${h.nome}</h4><p>Arquivado em ${new Date(h.criado_em).toLocaleString('pt-BR')}</p></div>
+                        <div class="historico-acoes">
+                            <button class="btn-historico btn-abrir-historico" onclick="abrirHistorico('${h.id}')">Abrir</button>
+                            <button class="btn-historico btn-excluir-historico" onclick="excluirHistorico('${h.id}')">Excluir</button>
+                        </div>
+                    </div>`).join('')}</div>`;
+            } catch (erro) {
+                console.error(erro);
+                container.innerHTML = '<div class="empty-dash">Erro ao carregar o histórico.</div>';
+            }
+        }
+
+        async function abrirHistorico(id) {
+            try {
+                const { data, error } = await supabaseClient.from('resgate_historico').select('nome,dados').eq('id', id).single();
+                if (error) throw error;
+                window.dadosResgates = data.dados.dadosResgates || {};
+                window.planilhaCarregada = true;
+                window.posicaoAtual = '';
+                window.modoHistorico = true;
+                window.nomeHistoricoAtual = data.nome;
+                document.getElementById('upload-text').innerText = 'Voltar ao histórico';
+                mudarAba('home');
+                renderizarPastas();
+            } catch (erro) { console.error(erro); alert('Não foi possível abrir este histórico.'); }
+        }
+
+        async function excluirHistorico(id) {
+            if (!confirm('Excluir este registro do histórico? Esta ação não pode ser desfeita.')) return;
+            try {
+                const { error } = await supabaseClient.from('resgate_historico').delete().eq('id', id);
+                if (error) throw error;
+                carregarHistorico();
+            } catch (erro) { console.error(erro); alert('Não foi possível excluir o histórico.'); }
+        }
+
+        function iniciarNovoResgate() {
+            window.dadosResgates = {};
+            window.posicaoAtual = '';
+            window.planilhaCarregada = false;
+            window.modoHistorico = false;
+            window.nomeHistoricoAtual = '';
+            document.getElementById('excel-file').value = '';
+            document.getElementById('upload-text').innerText = 'Adicionar planilha de ganhos';
+            document.getElementById('subtitle-text').innerText = 'Faça o upload da planilha para carregar os locais de resgate.';
+            document.getElementById('view-posicoes').innerHTML = '';
+            document.getElementById('btn-exportar').style.display = 'none';
+            document.getElementById('btn-arquivar').style.display = 'none';
+            document.getElementById('btn-novo-resgate').style.display = 'none';
+            atualizarStatusNuvem('☁️ Pronto para iniciar um novo resgate');
+            mudarAba('home');
+        }
+
+        // DASHBOARD
+        function formatarMoeda(valor) { return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+        function trocarVisaoDash(visao) {
+            document.getElementById('dash-tab-tabela').classList.remove('active');
+            document.getElementById('dash-tab-grafico').classList.remove('active');
+            document.getElementById('dash-view-tabela').style.display = 'none';
+            document.getElementById('dash-view-grafico').style.display = 'none';
+
+            if(visao === 'tabela') {
+                document.getElementById('dash-tab-tabela').classList.add('active');
+                document.getElementById('dash-view-tabela').style.display = 'block';
+            } else {
+                document.getElementById('dash-tab-grafico').classList.add('active');
+                document.getElementById('dash-view-grafico').style.display = 'flex';
+                desenharGraficos();
+            }
+        }
+
+        function renderizarDashboard() {
+            let layoutDash = `
+                <div class="dash-tabs">
+                    <button class="dash-tab-btn active" id="dash-tab-tabela" onclick="trocarVisaoDash('tabela')">Tabela de Dados</button>
+                    <button class="dash-tab-btn" id="dash-tab-grafico" onclick="trocarVisaoDash('grafico')">Gráficos de Conclusão</button>
+                </div>
+                
+                <div id="dash-view-tabela">
+                    <table class="dashboard-table">
+                        <thead><tr><th>Area</th><th>SKUs Únicos</th><th>Peças</th><th>Valor</th><th>Conclusão</th></tr></thead>
+                        <tbody id="dash-tbody"></tbody>
+                    </table>
+                </div>
+
+                <div id="dash-view-grafico" class="charts-wrapper">
+                    <div class="chart-box">
+                        <h4>Status de Peças</h4>
+                        <canvas id="chartPecas" width="300" height="300"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <h4>Status Financeiro (R$)</h4>
+                        <canvas id="chartValor" width="300" height="300"></canvas>
+                    </div>
+                </div>
+            `;
+            document.getElementById('dashboard-conteudo').innerHTML = layoutDash;
+
+            let htmlTbody = '';
+            let somaGeralValor = 0;
+            let totalPecasGeral = 0;
+            let totalItensConcluidosGeral = 0;
+            let totalLinhasGeral = 0;
+            let setSKUsGeral = new Set();
+
+            window.dashData = { pecasConcluidas: 0, pecasPendentes: 0, valorConcluido: 0, valorPendente: 0 };
+
+            mapeamentoColunas.forEach(pos => {
+                const itensValidos = window.dadosResgates[pos.nome].filter(i => !i.indisponivel);
+                if(itensValidos.length > 0) {
+                    let valorPosicao = 0;
+                    let qtdPecasPosicao = 0;
+                    let linhasConcluidas = 0;
+                    let setSKUsPosicao = new Set();
+                    
+                    itensValidos.forEach(i => {
+                        valorPosicao += i.valorTotal; 
+                        qtdPecasPosicao += i.qtd;
+                        setSKUsPosicao.add(i.item); 
+                        setSKUsGeral.add(i.item);
+
+                        if(i.checado) {
+                            linhasConcluidas++;
+                            window.dashData.pecasConcluidas += i.qtd;
+                            window.dashData.valorConcluido += i.valorTotal;
+                        } else {
+                            window.dashData.pecasPendentes += i.qtd;
+                            window.dashData.valorPendente += i.valorTotal;
+                        }
+                    });
+                    
+                    somaGeralValor += valorPosicao;
+                    totalPecasGeral += qtdPecasPosicao;
+                    totalLinhasGeral += itensValidos.length;
+                    totalItensConcluidosGeral += linhasConcluidas;
+                    
+                    const percentual = Math.round((linhasConcluidas / itensValidos.length) * 100);
+                    
+                    htmlTbody += `<tr>
+                        <td>${pos.nome}</td>
+                        <td class="center-cell">${setSKUsPosicao.size}</td>
+                        <td class="center-cell">${qtdPecasPosicao}</td>
+                        <td><div class="val-cell"><span>R$</span> <span>${formatarMoeda(valorPosicao)}</span></div></td>
+                        <td>
+                            <div class="prog-container">
+                                <div class="prog-bg"><div class="prog-fill" style="width: ${percentual}%"></div></div>
+                                <span>${percentual}%</span>
+                            </div>
+                        </td>
+                    </tr>`;
+                }
+            });
+
+            const percentualGeral = totalLinhasGeral > 0 ? Math.round((totalItensConcluidosGeral / totalLinhasGeral) * 100) : 0;
+            htmlTbody += `<tr class="row-total">
+                <td>Total</td>
+                <td class="center-cell">${setSKUsGeral.size}</td>
+                <td class="center-cell">${totalPecasGeral}</td>
+                <td><div class="val-cell"><span>R$</span> <span>${formatarMoeda(somaGeralValor)}</span></div></td>
+                <td>
+                    <div class="prog-container">
+                        <div class="prog-bg"><div class="prog-fill" style="background-color: #fff; width: ${percentualGeral}%"></div></div>
+                        <span>${percentualGeral}%</span>
+                    </div>
+                </td>
+            </tr>`;
+
+            document.getElementById('dash-tbody').innerHTML = htmlTbody;
+        }
+
+        function desenharGraficos() {
+            if (graficoItens) graficoItens.destroy();
+            if (graficoFinanceiro) graficoFinanceiro.destroy();
+
+            const ctxPecas = document.getElementById('chartPecas').getContext('2d');
+            const ctxValor = document.getElementById('chartValor').getContext('2d');
+
+            const dadosComuns = {
+                labels: ['Concluído', 'Pendente'],
+                borderWidth: 0
+            };
+
+            graficoItens = new Chart(ctxPecas, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.values(dadosComuns.labels),
+                    datasets: [{
+                        data: [window.dashData.pecasConcluidas, window.dashData.pecasPendentes],
+                        backgroundColor: ['#00B050', '#cbd5e0'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { responsive: false, maintainAspectRatio: false, cutout: '65%' }
+            });
+
+            graficoFinanceiro = new Chart(ctxValor, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.values(dadosComuns.labels),
+                    datasets: [{
+                        data: [window.dashData.valorConcluido, window.dashData.valorPendente],
+                        backgroundColor: ['#0070C0', '#cbd5e0'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { 
+                    responsive: false, maintainAspectRatio: false, cutout: '65%',
+                    plugins: {
+                        tooltip: { callbacks: { label: context => ' R$ ' + formatarMoeda(context.raw) } }
+                    }
+                }
+            });
+        }
+
+        // Conecta ao banco e recupera os dados ao abrir/recarregar o site.
+        window.addEventListener('DOMContentLoaded', async () => {
+            await carregarEstadoSalvo();
+        });
+
+        function exportarExcel() {
+            const dadosExportacao = [];
+            const linhasVermelhas = [];
+            let rowIndex = 0; 
+
+            mapeamentoColunas.forEach(pos => {
+                const itens = window.dadosResgates[pos.nome];
+                itens.forEach(item => {
+                    rowIndex++;
+                    if (item.indisponivel) {
+                        linhasVermelhas.push(rowIndex);
+                        dadosExportacao.push({
+                            "SKU": item.item, "QUANTIDADE RESGATADA": item.qtd, "QUAL RESGATE": pos.nome,
+                            "LOTE": item.lote, "DESTINO": item.destino, "VALIDAÇÃO QUALIDADE GB": item.validacao,
+                            "VALOR": formatarMoeda(item.valorTotal), "STATUS (NO SISTEMA)": "Indisponível / Falta"
+                        });
+                    } else {
+                        dadosExportacao.push({
+                            "SKU": item.item, "QUANTIDADE RESGATADA": item.qtd, "QUAL RESGATE": pos.nome,
+                            "LOTE": item.lote, "DESTINO": item.destino, "VALIDAÇÃO QUALIDADE GB": item.validacao,
+                            "VALOR": formatarMoeda(item.valorTotal), "STATUS (NO SISTEMA)": item.checado ? "Concluído" : "Pendente"
+                        });
+                    }
+                });
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(dadosExportacao);
+            
+            const range = XLSX.utils.decode_range(worksheet['!ref']);
+            for(let row of linhasVermelhas) {
+                for(let col = range.s.c; col <= range.e.c; col++) {
+                    const cellAddress = XLSX.utils.encode_cell({r: row, c: col});
+                    if(!worksheet[cellAddress]) continue;
+                    worksheet[cellAddress].s = {
+                        fill: { fgColor: { rgb: "FFFF0000" } }, 
+                        font: { color: { rgb: "FFFFFFFF" }, bold: true } 
+                    };
+                }
+            }
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Relação de Resgates");
+            XLSX.writeFile(workbook, "Relatorio_Resgates_Atualizado.xlsx");
+        }
+    </script>
+</body>
+</html>
