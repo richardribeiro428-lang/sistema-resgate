@@ -141,20 +141,18 @@
         .filtro-box-inner { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; flex-grow: 1; }
         .filtro-item { display: flex; align-items: center; gap: 5px; }
         .filtro-item label { font-weight: 700; color: #2b6cb0; font-size: 0.85rem; }
-        .filtro-item select, .filtro-item input[type="text"] { padding: 6px 10px; border-radius: 6px; border: 1px solid #90cdf4; outline: none; font-family: inherit; font-weight: 600; color: #2c5282; font-size: 0.85rem; }
-        .filtro-item select { max-width: 250px; }
         
-        /* Dropdown Multi-Select Destino (COM BUSCA) */
-        .dropdown-check-list { position: relative; display: inline-block; width: 200px; }
+        /* Dropdown Multi-Select (Padronizado) */
+        .dropdown-check-list { position: relative; display: inline-block; min-width: 170px; flex-grow: 1; max-width: 250px;}
         .dropdown-check-list .anchor { padding: 6px 10px; border-radius: 6px; border: 1px solid #90cdf4; cursor: pointer; background: #fff; color: #2c5282; font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; user-select: none; }
         .dropdown-check-list .items { display: none; position: absolute; top: 100%; left: 0; background: #fff; border: 1px solid #90cdf4; border-radius: 6px; max-height: 300px; overflow-y: auto; width: 100%; z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 0; margin: 5px 0 0 0; }
         .dropdown-check-list .items.visible { display: block; }
         .dropdown-check-list .items li { list-style: none; padding: 0; display: flex; align-items: center; font-size: 0.85rem; color: #2d3748; }
-        .dropdown-check-list .items li.dest-item:hover { background-color: #ebf4ff; }
+        .dropdown-check-list .items li:hover { background-color: #ebf4ff; }
         .dropdown-check-list .items label { width: 100%; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 500;}
         .dropdown-check-list .items input[type="checkbox"] { margin: 0; cursor: pointer; }
         .dropdown-check-list::-webkit-scrollbar { width: 6px; }
-        .busca-destino-input { width: 100%; padding: 8px; border: 1px solid #90cdf4; border-radius: 4px; outline: none; font-family: inherit; font-size: 0.85rem; }
+        .busca-dropdown-input { width: 100%; padding: 8px; border: 1px solid #90cdf4; border-radius: 4px; outline: none; font-family: inherit; font-size: 0.85rem; }
 
         .btn-selecionar-todos { background-color: #3182ce; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: background 0.2s; }
         .btn-selecionar-todos:hover { background-color: #2b6cb0; }
@@ -302,26 +300,43 @@
                     
                     <div class="filtro-box">
                         <div class="filtro-box-inner">
+                            
+                            <!-- Dropdown Multi-Select SKU -->
                             <div class="filtro-item">
                                 <label>SKU:</label>
-                                <input type="text" id="filtro-sku" onkeyup="renderizarListaItens()" placeholder="Buscar SKU..." style="max-width: 130px;">
+                                <div id="dropdown-sku" class="dropdown-check-list">
+                                    <div class="anchor" onclick="toggleDropdown('lista-sku-chk')">
+                                        <span id="lbl-sku-selecionados">Todos</span>
+                                        <span>▼</span>
+                                    </div>
+                                    <ul id="lista-sku-chk" class="items"></ul>
+                                </div>
                             </div>
+                            
+                            <!-- Dropdown Multi-Select VALIDAÇÃO -->
                             <div class="filtro-item">
                                 <label>Validação:</label>
-                                <select id="filtro-validacao" onchange="aoMudarValidacao()">
-                                    <option value="TODOS">Todas (Ver Todos)</option>
-                                </select>
+                                <div id="dropdown-validacao" class="dropdown-check-list">
+                                    <div class="anchor" onclick="toggleDropdown('lista-validacao-chk')">
+                                        <span id="lbl-validacao-selecionados">Todas</span>
+                                        <span>▼</span>
+                                    </div>
+                                    <ul id="lista-validacao-chk" class="items"></ul>
+                                </div>
                             </div>
+
+                            <!-- Dropdown Multi-Select DESTINOS -->
                             <div class="filtro-item">
                                 <label>Destinos:</label>
                                 <div id="dropdown-destino" class="dropdown-check-list">
-                                    <div class="anchor" onclick="toggleDropdownDestino()">
+                                    <div class="anchor" onclick="toggleDropdown('lista-destinos-chk')">
                                         <span id="lbl-destinos-selecionados">Todos</span>
                                         <span>▼</span>
                                     </div>
                                     <ul id="lista-destinos-chk" class="items"></ul>
                                 </div>
                             </div>
+
                         </div>
                         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top: 10px;">
                             <button class="btn-limpar-filtros" onclick="limparFiltros()">🧹 Limpar Filtros</button>
@@ -573,7 +588,6 @@
                 const workbook = XLSX.read(data, {type: 'array'});
                 if(!workbook.Sheets["Ganho"]) { alert('Aba "Ganho" não encontrada!'); return; }
 
-                // --- MAPEAMENTO DA ABA LOC FIXA ---
                 let mapaLocFixa = {};
                 if (workbook.Sheets["LOC FIXA"]) {
                     const jsonLocFixa = XLSX.utils.sheet_to_json(workbook.Sheets["LOC FIXA"], {header: 1});
@@ -611,7 +625,6 @@
                 const destino = String(linha[11] || 'ND').trim();
                 const validacao = String(linha[39] || '#N/D').trim();
 
-                // --- REGRA DE POSIÇÃO FIXA ---
                 let locFixa = "";
                 const valUpper = validacao.toUpperCase();
                 
@@ -730,57 +743,178 @@
             verificarTotalGeral();
         }
 
-        function aoMudarValidacao() {
-            atualizarDropdownDestinos();
+        // ==========================================
+        // LÓGICA DE FILTROS CRUZADOS E DROPDOWNS
+        // ==========================================
+        function toggleDropdown(listId) {
+            const allLists = document.querySelectorAll('.dropdown-check-list .items');
+            allLists.forEach(ul => {
+                if(ul.id !== listId) ul.classList.remove('visible');
+            });
+            document.getElementById(listId).classList.toggle('visible');
+        }
+
+        window.onclick = function(e) {
+            if (!e.target.closest('.dropdown-check-list')) {
+                const dropdowns = document.querySelectorAll('.dropdown-check-list .items.visible');
+                dropdowns.forEach(d => d.classList.remove('visible'));
+            }
+        }
+
+        const getSelecionados = (selector) => Array.from(document.querySelectorAll(selector)).filter(c => c.checked).map(c => c.value);
+
+        function atualizarLabelsFiltros() {
+            const updateLabel = (chkClass, lblId) => {
+                const selecionados = getSelecionados(`.${chkClass}`);
+                const lbl = document.getElementById(lblId);
+                if (selecionados.length === 0) lbl.innerText = 'Todos';
+                else if (selecionados.length === 1) lbl.innerText = selecionados[0];
+                else lbl.innerText = `${selecionados.length} selecionados`;
+            };
+            
+            updateLabel('chk-sku', 'lbl-sku-selecionados');
+            updateLabel('chk-validacao', 'lbl-validacao-selecionados');
+            updateLabel('chk-destino', 'lbl-destinos-selecionados');
+        }
+
+        function aoMudarFiltro() {
+            atualizarLabelsFiltros();
+            atualizarVisibilidadeDropdowns(); // Cross-filtering visual
             renderizarListaItens();
         }
 
-        function atualizarDropdownDestinos() {
+        function atualizarDropdowns() {
             const posicaoNome = window.posicaoAtual;
             if (!posicaoNome || !window.dadosResgates[posicaoNome]) return;
 
-            const selectVal = document.getElementById('filtro-validacao');
-            const filtroVal = selectVal ? selectVal.value : 'TODOS';
-
-            const chksDestinoAntigos = document.querySelectorAll('.chk-destino');
-            const destSelecionados = Array.from(chksDestinoAntigos).filter(c => c.checked).map(c => c.value);
+            const skusSel = getSelecionados('.chk-sku');
+            const valsSel = getSelecionados('.chk-validacao');
+            const destsSel = getSelecionados('.chk-destino');
 
             const itens = window.dadosResgates[posicaoNome];
             
-            const itensVisiveis = itens.filter(itemObj => {
+            // Itens totais presentes na aba aberta (ignora checks de filtros aqui, porque as listas precisam de todas as opções da aba)
+            const itensAba = itens.filter(itemObj => {
                 if (itemObj.indisponivel) return false;
                 if (window.abaDetalhes === 'pendentes' && itemObj.checado) return false;
                 if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return false;
-                if (filtroVal !== 'TODOS' && itemObj.validacao !== filtroVal) return false;
                 return true;
             });
 
-            const destinosUnicos = [...new Set(itensVisiveis.map(i => i.destino))].sort((a, b) => a.localeCompare(b));
+            const skusUnicos = [...new Set(itensAba.map(i => i.item))].sort((a, b) => a.localeCompare(b));
+            const valsUnicas = [...new Set(itensAba.map(i => i.validacao))].sort((a, b) => a.localeCompare(b));
+            const destsUnicos = [...new Set(itensAba.map(i => i.destino))].sort((a, b) => a.localeCompare(b));
             
-            let destHtml = `<li style="position: sticky; top: 0; background: #fff; z-index: 2; padding: 10px; border-bottom: 1px solid #e2e8f0;">
-                                <input type="text" id="busca-destino" class="busca-destino-input" placeholder="Pesquisar destino..." onkeyup="filtrarDropdownDestino()">
+            const buildHtml = (unicos, selecionados, inputId, itemClass, chkClass, placeholder) => {
+                let html = `<li style="position: sticky; top: 0; background: #fff; z-index: 2; padding: 10px; border-bottom: 1px solid #e2e8f0;">
+                                <input type="text" id="${inputId}" class="busca-dropdown-input" placeholder="${placeholder}" onkeyup="filtrarDropdown('${inputId}', '${itemClass}')">
                             </li>`;
+                unicos.forEach(val => {
+                    const isChecked = selecionados.includes(val) ? 'checked' : '';
+                    html += `<li class="${itemClass}" data-cross-valid="true"><label><input type="checkbox" value="${val}" class="${chkClass}" onchange="aoMudarFiltro()" ${isChecked}> ${val}</label></li>`;
+                });
+                return html;
+            };
             
-            destinosUnicos.forEach(d => {
-                const isChecked = destSelecionados.includes(d) ? 'checked' : '';
-                destHtml += `<li class="dest-item"><label><input type="checkbox" value="${d}" class="chk-destino" onchange="atualizarFiltroDestino()" ${isChecked}> ${d}</label></li>`;
-            });
+            document.getElementById('lista-sku-chk').innerHTML = buildHtml(skusUnicos, skusSel, 'busca-sku', 'sku-item', 'chk-sku', 'Pesquisar SKU...');
+            document.getElementById('lista-validacao-chk').innerHTML = buildHtml(valsUnicas, valsSel, 'busca-validacao', 'validacao-item', 'chk-validacao', 'Pesquisar Validação...');
+            document.getElementById('lista-destinos-chk').innerHTML = buildHtml(destsUnicos, destsSel, 'busca-destino', 'dest-item', 'chk-destino', 'Pesquisar Destino...');
             
-            document.getElementById('lista-destinos-chk').innerHTML = destHtml;
-            atualizarLabelDestinosSelecionados();
+            atualizarLabelsFiltros();
+            atualizarVisibilidadeDropdowns(); // Cross-filtering
         }
 
-        function atualizarLabelDestinosSelecionados() {
-            const checkboxes = document.querySelectorAll('.chk-destino');
-            const selecionados = Array.from(checkboxes).filter(c => c.checked).map(c => c.value);
-            const label = document.getElementById('lbl-destinos-selecionados');
+        // Esta função esconde dos dropdowns as opções que não cruzam com os filtros selecionados
+        function atualizarVisibilidadeDropdowns() {
+            const posicaoNome = window.posicaoAtual;
+            if (!posicaoNome || !window.dadosResgates[posicaoNome]) return;
+
+            const skusSel = getSelecionados('.chk-sku');
+            const valsSel = getSelecionados('.chk-validacao');
+            const destsSel = getSelecionados('.chk-destino');
+
+            const itens = window.dadosResgates[posicaoNome];
             
-            if (selecionados.length === 0) {
-                label.innerText = 'Todos';
-            } else if (selecionados.length === 1) {
-                label.innerText = selecionados[0];
-            } else {
-                label.innerText = `${selecionados.length} selecionados`;
+            const itensAba = itens.filter(itemObj => {
+                if (itemObj.indisponivel) return false;
+                if (window.abaDetalhes === 'pendentes' && itemObj.checado) return false;
+                if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return false;
+                return true;
+            });
+
+            // Lógica Cruzada
+            const validSkus = new Set(itensAba.filter(i => 
+                (valsSel.length === 0 || valsSel.includes(i.validacao)) && 
+                (destsSel.length === 0 || destsSel.includes(i.destino))
+            ).map(i => i.item));
+
+            const validVals = new Set(itensAba.filter(i => 
+                (skusSel.length === 0 || skusSel.includes(i.item)) && 
+                (destsSel.length === 0 || destsSel.includes(i.destino))
+            ).map(i => i.validacao));
+
+            const validDests = new Set(itensAba.filter(i => 
+                (skusSel.length === 0 || skusSel.includes(i.item)) && 
+                (valsSel.length === 0 || valsSel.includes(i.validacao))
+            ).map(i => i.destino));
+
+            // Aplica visibilidade no HTML salvando num dataset (pra não sobrepor a busca de texto)
+            document.querySelectorAll('.sku-item').forEach(li => {
+                const val = li.querySelector('input').value;
+                li.setAttribute('data-cross-valid', validSkus.has(val) ? "true" : "false");
+            });
+
+            document.querySelectorAll('.validacao-item').forEach(li => {
+                const val = li.querySelector('input').value;
+                li.setAttribute('data-cross-valid', validVals.has(val) ? "true" : "false");
+            });
+
+            document.querySelectorAll('.dest-item').forEach(li => {
+                const val = li.querySelector('input').value;
+                li.setAttribute('data-cross-valid', validDests.has(val) ? "true" : "false");
+            });
+
+            // Refaz a busca textual pra aplicar o display corretamente
+            filtrarDropdown('busca-sku', 'sku-item');
+            filtrarDropdown('busca-validacao', 'validacao-item');
+            filtrarDropdown('busca-destino', 'dest-item');
+        }
+
+        function filtrarDropdown(inputId, itemClass) {
+            const input = document.getElementById(inputId);
+            if(!input) return;
+            const filter = input.value.toUpperCase();
+            const lis = document.querySelectorAll(`.${itemClass}`);
+
+            lis.forEach(li => {
+                const label = li.querySelector('label');
+                const txtValue = label.textContent || label.innerText;
+                const matchesSearch = txtValue.toUpperCase().indexOf(filter) > -1;
+                const isCrossValid = li.getAttribute('data-cross-valid') !== "false";
+
+                if (matchesSearch && isCrossValid) {
+                    li.style.display = "";
+                } else {
+                    li.style.display = "none";
+                }
+            });
+        }
+
+        function limparFiltros(renderizar = true) {
+            const inputsBusca = ['busca-sku', 'busca-validacao', 'busca-destino'];
+            inputsBusca.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.value = '';
+            });
+
+            const checkboxes = document.querySelectorAll('.chk-sku, .chk-validacao, .chk-destino');
+            checkboxes.forEach(chk => chk.checked = false);
+            
+            atualizarLabelsFiltros();
+            atualizarVisibilidadeDropdowns(); // Reseta cruzas
+            
+            if(renderizar) {
+                renderizarListaItens();
             }
         }
 
@@ -806,22 +940,8 @@
             document.getElementById('btn-acao-massa').innerHTML = '☑ Selecionar Todos';
             document.getElementById('btn-acao-massa').style.display = window.modoHistorico ? 'none' : 'block';
 
-            const itensValidos = window.dadosResgates[posicaoNome].filter(i => !i.indisponivel);
-            
-            const validacoesUnicas = [...new Set(itensValidos.map(i => i.validacao))];
-            let selectVal = '<option value="TODOS">Todas (Ver Todos)</option>';
-            validacoesUnicas.forEach(v => selectVal += `<option value="${v}">${v}</option>`);
-            document.getElementById('filtro-validacao').innerHTML = selectVal;
-            document.getElementById('filtro-validacao').value = 'TODOS'; 
-
-            document.getElementById('lbl-destinos-selecionados').innerText = 'Todos';
-            document.getElementById('filtro-sku').value = ''; // Limpa filtro SKU
-            
-            atualizarDropdownDestinos();
-
-            const dropdown = document.getElementById('lista-destinos-chk');
-            if(dropdown) dropdown.classList.remove('visible');
-
+            limparFiltros(false); // Zera e não renderiza ainda
+            atualizarDropdowns(); // Constrói dropdowns baseados na aba atual
             renderizarListaItens();
         }
 
@@ -840,60 +960,7 @@
                 document.getElementById('btn-acao-massa').innerHTML = '☐ Desfazer Todos';
             }
 
-            atualizarDropdownDestinos();
-            renderizarListaItens();
-        }
-
-        function limparFiltros() {
-            document.getElementById('filtro-validacao').value = 'TODOS';
-            document.getElementById('filtro-sku').value = ''; // Limpa o SKU
-            
-            const inputBusca = document.getElementById('busca-destino');
-            if (inputBusca) {
-                inputBusca.value = '';
-            }
-
-            atualizarDropdownDestinos();
-            
-            const chksDestino = document.querySelectorAll('.chk-destino');
-            chksDestino.forEach(chk => chk.checked = false);
-            
-            atualizarLabelDestinosSelecionados();
-            renderizarListaItens();
-        }
-
-        function toggleDropdownDestino() {
-            document.getElementById('lista-destinos-chk').classList.toggle('visible');
-        }
-
-        function filtrarDropdownDestino() {
-            const input = document.getElementById('busca-destino');
-            const filter = input.value.toUpperCase();
-            const ul = document.getElementById('lista-destinos-chk');
-            const li = ul.getElementsByClassName('dest-item');
-
-            for (let i = 0; i < li.length; i++) {
-                const label = li[i].getElementsByTagName('label')[0];
-                const txtValue = label.textContent || label.innerText;
-                if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                    li[i].style.display = "";
-                } else {
-                    li[i].style.display = "none";
-                }
-            }
-        }
-
-        window.onclick = function(e) {
-            if (!e.target.closest('.dropdown-check-list')) {
-                const dropdown = document.getElementById('lista-destinos-chk');
-                if (dropdown && dropdown.classList.contains('visible')) {
-                    dropdown.classList.remove('visible');
-                }
-            }
-        }
-
-        function atualizarFiltroDestino() {
-            atualizarLabelDestinosSelecionados();
+            atualizarDropdowns(); // Reconstrói opções da aba correspondente
             renderizarListaItens();
         }
 
@@ -908,7 +975,7 @@
             if (novo !== null && novo.trim() !== "") {
                 window.dadosResgates[posicaoNome][index].destino = novo.trim();
                 salvarEstado();
-                atualizarDropdownDestinos();
+                atualizarDropdowns();
                 renderizarListaItens();
             }
         }
@@ -927,13 +994,13 @@
 
         function renderizarListaItens() {
             const posicaoNome = window.posicaoAtual;
-            const filtroVal = document.getElementById('filtro-validacao').value;
-            const filtroSku = document.getElementById('filtro-sku').value.toUpperCase().trim(); // Filtro SKU
             
-            const chksDestino = document.querySelectorAll('.chk-destino');
-            const destSelecionados = Array.from(chksDestino).filter(c => c.checked).map(c => c.value);
+            const skusSel = getSelecionados('.chk-sku');
+            const valsSel = getSelecionados('.chk-validacao');
+            const destsSel = getSelecionados('.chk-destino');
 
             const itens = window.dadosResgates[posicaoNome];
+            if (!itens) return;
             
             let listaHtml = '<ul class="lista-itens">';
             let qtdFiltrada = 0;
@@ -951,11 +1018,9 @@
                 if (window.abaDetalhes === 'pendentes' && itemObj.checado) return;
                 if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return;
 
-                if (filtroVal !== 'TODOS' && itemObj.validacao !== filtroVal) return;
-                if (destSelecionados.length > 0 && !destSelecionados.includes(itemObj.destino)) return;
-                
-                // Aplica Filtro SKU
-                if (filtroSku && !itemObj.item.toUpperCase().includes(filtroSku)) return;
+                if (skusSel.length > 0 && !skusSel.includes(itemObj.item)) return;
+                if (valsSel.length > 0 && !valsSel.includes(itemObj.validacao)) return;
+                if (destsSel.length > 0 && !destsSel.includes(itemObj.destino)) return;
                 
                 qtdFiltrada++;
                 somaPecas += itemObj.qtd;
@@ -965,7 +1030,6 @@
                 const somenteLeitura = window.modoHistorico ? 'disabled' : '';
                 const btnFalta = window.modoHistorico ? '' : `<button class="btn-falta" onclick="marcarIndisponivel('${posicaoNome}', ${index})" title="Remover item da lista">🚫 Falta</button>`;
                 
-                // HTML da Locação Fixa se houver + Ícone Lápis
                 let htmlLocFixa = '';
                 if (itemObj.locFixa) {
                     htmlLocFixa = `
@@ -1019,7 +1083,7 @@
             window.dadosResgates[posicaoNome][index].checado = !window.dadosResgates[posicaoNome][index].checado;
             salvarEstado();
             
-            atualizarDropdownDestinos();
+            atualizarDropdowns();
             renderizarListaItens(); 
 
             const novoContainer = document.querySelector('.lista-itens');
@@ -1029,10 +1093,10 @@
         function acaoTodosVisiveis() {
             if (window.modoHistorico) return;
             const posicaoNome = window.posicaoAtual;
-            const filtroVal = document.getElementById('filtro-validacao').value;
-            const chksDestino = document.querySelectorAll('.chk-destino');
-            const destSelecionados = Array.from(chksDestino).filter(c => c.checked).map(c => c.value);
-            const filtroSku = document.getElementById('filtro-sku').value.toUpperCase().trim();
+            
+            const skusSel = getSelecionados('.chk-sku');
+            const valsSel = getSelecionados('.chk-validacao');
+            const destsSel = getSelecionados('.chk-destino');
             
             const itens = window.dadosResgates[posicaoNome];
             const estadoNovo = window.abaDetalhes === 'pendentes' ? true : false;
@@ -1043,15 +1107,15 @@
                 if (window.abaDetalhes === 'pendentes' && itemObj.checado) return;
                 if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return;
                 
-                if (filtroVal !== 'TODOS' && itemObj.validacao !== filtroVal) return;
-                if (destSelecionados.length > 0 && !destSelecionados.includes(itemObj.destino)) return;
-                if (filtroSku && !itemObj.item.toUpperCase().includes(filtroSku)) return;
+                if (skusSel.length > 0 && !skusSel.includes(itemObj.item)) return;
+                if (valsSel.length > 0 && !valsSel.includes(itemObj.validacao)) return;
+                if (destsSel.length > 0 && !destsSel.includes(itemObj.destino)) return;
 
                 itemObj.checado = estadoNovo;
             });
 
             salvarEstado();
-            atualizarDropdownDestinos();
+            atualizarDropdowns();
             renderizarListaItens();
         }
 
@@ -1062,7 +1126,7 @@
                 window.dadosResgates[posicaoNome][index].indisponivel = true;
                 window.dadosResgates[posicaoNome][index].checado = false;
                 salvarEstado();
-                atualizarDropdownDestinos();
+                atualizarDropdowns();
                 renderizarListaItens();
             }
         }
@@ -1071,19 +1135,19 @@
 
         async function copiarDestinosVisiveis() {
             const posicaoNome = window.posicaoAtual;
-            const filtroVal = document.getElementById('filtro-validacao').value;
-            const chksDestino = document.querySelectorAll('.chk-destino');
-            const destSelecionados = Array.from(chksDestino).filter(c => c.checked).map(c => c.value);
-            const filtroSku = document.getElementById('filtro-sku').value.toUpperCase().trim();
+            
+            const skusSel = getSelecionados('.chk-sku');
+            const valsSel = getSelecionados('.chk-validacao');
+            const destsSel = getSelecionados('.chk-destino');
 
             const itens = window.dadosResgates[posicaoNome] || [];
             const destinos = itens.filter(itemObj => {
                 if (itemObj.indisponivel) return false;
                 if (window.abaDetalhes === 'pendentes' && itemObj.checado) return false;
                 if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return false;
-                if (filtroVal !== 'TODOS' && itemObj.validacao !== filtroVal) return false;
-                if (destSelecionados.length > 0 && !destSelecionados.includes(itemObj.destino)) return false;
-                if (filtroSku && !itemObj.item.toUpperCase().includes(filtroSku)) return false;
+                if (skusSel.length > 0 && !skusSel.includes(itemObj.item)) return false;
+                if (valsSel.length > 0 && !valsSel.includes(itemObj.validacao)) return false;
+                if (destsSel.length > 0 && !destsSel.includes(itemObj.destino)) return false;
                 return true;
             }).map(i => i.destino);
 
