@@ -153,7 +153,6 @@
         .dropdown-check-list .items label { width: 100%; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 500;}
         .dropdown-check-list .items input[type="checkbox"] { margin: 0; cursor: pointer; }
         .dropdown-check-list::-webkit-scrollbar { width: 6px; }
-        /* Barra de pesquisa dentro do dropdown */
         .busca-destino-input { width: 100%; padding: 8px; border: 1px solid #90cdf4; border-radius: 4px; outline: none; font-family: inherit; font-size: 0.85rem; }
 
         .btn-selecionar-todos { background-color: #3182ce; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: background 0.2s; }
@@ -248,6 +247,7 @@
     <div class="right-panel">
         <div class="main-card">
             
+            <!-- TELA HOME -->
             <div id="view-home">
                 <button class="btn-novo-resgate" id="btn-novo-resgate" onclick="iniciarNovoResgate()" style="display:none;">＋ Iniciar novo resgate</button>
                 <div class="icon-top">🏢</div>
@@ -273,6 +273,7 @@
                 </button>
             </div>
 
+            <!-- TELA DETALHES -->
             <div id="view-detalhes">
                 <button class="btn-voltar" onclick="voltarParaPastas()">&#8592; Voltar para posições</button>
                 
@@ -282,6 +283,7 @@
                         <span id="detalhes-stats" style="color: #718096; font-size: 0.9rem; font-weight: 600;"></span>
                     </div>
 
+                    <!-- Abas Pendentes / Resgatados -->
                     <div class="detalhes-tabs">
                         <button class="detalhes-tab-btn active" id="tab-pendentes" onclick="mudarAbaDetalhes('pendentes')">Pendentes (<span id="qtd-pendentes">0</span>)</button>
                         <button class="detalhes-tab-btn" id="tab-resgatados" onclick="mudarAbaDetalhes('resgatados')">Resgatados (<span id="qtd-resgatados">0</span>)</button>
@@ -316,6 +318,7 @@
                 <div id="detalhes-conteudo"></div>
             </div>
 
+            <!-- TELA HISTÓRICO -->
             <div id="view-historico" style="display:none; text-align:left; width:100%;">
                 <div class="icon-top">🗂️</div>
                 <h2>Histórico de Resgates</h2>
@@ -324,6 +327,7 @@
                 <div id="historico-conteudo"><div class="empty-dash">Carregando histórico...</div></div>
             </div>
 
+            <!-- TELA DASHBOARD -->
             <div id="view-dashboard">
                 <div class="icon-top">📈</div>
                 <h2>Visão Geral de Ganhos</h2>
@@ -568,9 +572,9 @@
                 const item = linha[3]; 
                 if (!item || item === '-' || item === 'ITEM') continue;
 
-                const lote = linha[5] || '-';
-                const destino = linha[11] || 'ND';
-                const validacao = linha[39] || '#N/D';
+                const lote = String(linha[5] || '-').trim();
+                const destino = String(linha[11] || 'ND').trim();
+                const validacao = String(linha[39] || '#N/D').trim();
 
                 mapeamentoColunas.forEach(pos => {
                     const qtdResgate = parseFloat(linha[pos.indexQtd]);
@@ -579,8 +583,7 @@
                         if (isNaN(valorTotal)) valorTotal = 0;
 
                         // =========================================================================
-                        // AJUSTE: Chave única unificada apenas por Item, Destino e Validação.
-                        // Assim, lotes diferentes para o mesmo item/destino/validação são agrupados.
+                        // CHAVE ÚNICA: Item, Destino e Validação (Agrupa independentemente de lotes repetidos)
                         // =========================================================================
                         const chaveUnica = `${item}-${destino}-${validacao}`;
                         const itemExistente = window.dadosResgates[pos.nome].find(i => i.chaveUnica === chaveUnica);
@@ -589,14 +592,14 @@
                             itemExistente.qtd += qtdResgate;
                             itemExistente.valorTotal += valorTotal;
 
-                            // Junta os lotes de forma organizada e sem duplicatas redundantes
+                            // Junta os lotes de forma organizada e limpa, evitando duplicar lotes idênticos
                             const lotesAtuais = String(itemExistente.lote)
                                 .split('/')
                                 .map(l => l.trim())
                                 .filter(Boolean);
 
-                            if (lote && !lotesAtuais.includes(String(lote).trim())) {
-                                lotesAtuais.push(String(lote).trim());
+                            if (lote && !lotesAtuais.includes(lote)) {
+                                lotesAtuais.push(lote);
                                 itemExistente.lote = lotesAtuais.join(' / ');
                             }
                         } else {
@@ -725,14 +728,12 @@
 
             const itensValidos = window.dadosResgates[posicaoNome].filter(i => !i.indisponivel);
             
-            // Popula Validações
             const validacoesUnicas = [...new Set(itensValidos.map(i => i.validacao))];
             let selectVal = '<option value="TODOS">Todas (Ver Todos)</option>';
             validacoesUnicas.forEach(v => selectVal += `<option value="${v}">${v}</option>`);
             document.getElementById('filtro-validacao').innerHTML = selectVal;
             document.getElementById('filtro-validacao').value = 'TODOS'; 
 
-            // Popula Destinos com Caixa de Pesquisa Fixa
             const destinosUnicos = [...new Set(itensValidos.map(i => i.destino))].sort((a, b) => a.localeCompare(b));
             let destHtml = `<li style="position: sticky; top: 0; background: #fff; z-index: 2; padding: 10px; border-bottom: 1px solid #e2e8f0;">
                                 <input type="text" id="busca-destino" class="busca-destino-input" placeholder="Pesquisar destino..." onkeyup="filtrarDropdownDestino()">
@@ -750,12 +751,10 @@
             renderizarListaItens();
         }
 
-        // Funções para controle do Multi-Select Destino
         function toggleDropdownDestino() {
             document.getElementById('lista-destinos-chk').classList.toggle('visible');
         }
 
-        // Pesquisa inteligente dentro do dropdown
         function filtrarDropdownDestino() {
             const input = document.getElementById('busca-destino');
             const filter = input.value.toUpperCase();
@@ -1044,7 +1043,6 @@
             mudarAba('home');
         }
 
-        // DASHBOARD
         function formatarMoeda(valor) { return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
         function trocarVisaoDash(visao) {
