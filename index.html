@@ -582,9 +582,7 @@
                         let valorTotal = parseFloat(linha[pos.indexValor]);
                         if (isNaN(valorTotal)) valorTotal = 0;
 
-                        // =========================================================================
-                        // CHAVE ÚNICA EXATA: Apenas Item + Destino + Validação (ignora o lote para agrupar)
-                        // =========================================================================
+                        // CHAVE ÚNICA: Item + Destino + Validação (Se a validação for diferente, separa; se for igual, junta)
                         const chaveUnica = `${String(item).trim().toUpperCase()}-${String(destino).trim().toUpperCase()}-${String(validacao).trim().toUpperCase()}`;
                         const itemExistente = window.dadosResgates[pos.nome].find(i => i.chaveUnica === chaveUnica);
 
@@ -592,7 +590,7 @@
                             itemExistente.qtd += qtdResgate;
                             itemExistente.valorTotal += valorTotal;
 
-                            // Acumula os lotes de forma limpa na frente, sem duplicar lotes idênticos
+                            // Acumula os lotes de forma limpa na frente, separando por barra (/) sem duplicar
                             const lotesAtuais = String(itemExistente.lote)
                                 .split('/')
                                 .map(l => l.trim())
