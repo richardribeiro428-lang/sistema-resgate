@@ -160,6 +160,9 @@
         .btn-desfazer-todos { background-color: #718096; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: background 0.2s; }
         .btn-desfazer-todos:hover { background-color: #4a5568; }
 
+        .btn-limpar-filtros { background-color: #cbd5e0; color: #2d3748; border: none; padding: 8px 13px; border-radius: 7px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 0.82rem; transition: background 0.2s; }
+        .btn-limpar-filtros:hover { background-color: #a0aec0; }
+
         .lista-itens { list-style: none; padding: 0; margin: 0; max-height: 500px; overflow-y: auto; padding-right: 5px;}
         .lista-itens::-webkit-scrollbar { width: 8px; }
         .lista-itens::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
@@ -179,7 +182,7 @@
         .destino-col { min-width: 190px; max-width: 240px; text-align: right; margin-left: auto; }
         .destino-col-label { display:block; font-size:0.72rem; color:#a0aec0; font-weight:700; text-transform:uppercase; margin-bottom:4px; }
         .destino-copiavel { color:#5b21b6; font-weight:800; font-size:0.95rem; user-select:text; cursor:text; }
-        .btn-copiar-destinos { background:#805ad5; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; }
+        .btn-copiar-destinos { background:#805ad5; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
         .btn-copiar-destinos:hover { background:#6b46c1; }
         .historico-lista { display:grid; gap:12px; text-align:left; }
         .historico-card { border:1px solid #e2e8f0; border-radius:12px; padding:16px; display:flex; justify-content:space-between; align-items:center; gap:15px; }
@@ -247,7 +250,6 @@
     <div class="right-panel">
         <div class="main-card">
             
-            <!-- TELA HOME -->
             <div id="view-home">
                 <button class="btn-novo-resgate" id="btn-novo-resgate" onclick="iniciarNovoResgate()" style="display:none;">＋ Iniciar novo resgate</button>
                 <div class="icon-top">🏢</div>
@@ -273,7 +275,6 @@
                 </button>
             </div>
 
-            <!-- TELA DETALHES -->
             <div id="view-detalhes">
                 <button class="btn-voltar" onclick="voltarParaPastas()">&#8592; Voltar para posições</button>
                 
@@ -283,7 +284,6 @@
                         <span id="detalhes-stats" style="color: #718096; font-size: 0.9rem; font-weight: 600;"></span>
                     </div>
 
-                    <!-- Abas Pendentes / Resgatados -->
                     <div class="detalhes-tabs">
                         <button class="detalhes-tab-btn active" id="tab-pendentes" onclick="mudarAbaDetalhes('pendentes')">Pendentes (<span id="qtd-pendentes">0</span>)</button>
                         <button class="detalhes-tab-btn" id="tab-resgatados" onclick="mudarAbaDetalhes('resgatados')">Resgatados (<span id="qtd-resgatados">0</span>)</button>
@@ -309,6 +309,7 @@
                             </div>
                         </div>
                         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                            <button class="btn-limpar-filtros" onclick="limparFiltros()">🧹 Limpar Filtros</button>
                             <button class="btn-copiar-destinos" onclick="copiarDestinosVisiveis()">📋 Copiar destinos</button>
                             <button id="btn-acao-massa" class="btn-selecionar-todos" onclick="acaoTodosVisiveis()">☑ Selecionar Todos</button>
                         </div>
@@ -318,7 +319,6 @@
                 <div id="detalhes-conteudo"></div>
             </div>
 
-            <!-- TELA HISTÓRICO -->
             <div id="view-historico" style="display:none; text-align:left; width:100%;">
                 <div class="icon-top">🗂️</div>
                 <h2>Histórico de Resgates</h2>
@@ -327,7 +327,6 @@
                 <div id="historico-conteudo"><div class="empty-dash">Carregando histórico...</div></div>
             </div>
 
-            <!-- TELA DASHBOARD -->
             <div id="view-dashboard">
                 <div class="icon-top">📈</div>
                 <h2>Visão Geral de Ganhos</h2>
@@ -572,7 +571,6 @@
                 const rawItem = linha[3]; 
                 if (!rawItem || rawItem === '-' || rawItem === 'ITEM') continue;
 
-                // Limpeza rigorosa de espaços e formatação para garantir a união correta
                 const item = String(rawItem).trim();
                 const lote = String(linha[5] || '-').trim();
                 const destino = String(linha[11] || 'ND').trim();
@@ -584,7 +582,6 @@
                         let valorTotal = parseFloat(linha[pos.indexValor]);
                         if (isNaN(valorTotal)) valorTotal = 0;
 
-                        // Chave única padronizada em maiúsculas e sem espaços extras nas pontas
                         const chaveUnica = `${item.toUpperCase()}|${destino.toUpperCase()}|${validacao.toUpperCase()}`;
                         const itemExistente = window.dadosResgates[pos.nome].find(i => i.chaveUnica === chaveUnica);
 
@@ -592,7 +589,6 @@
                             itemExistente.qtd += qtdResgate;
                             itemExistente.valorTotal += valorTotal;
 
-                            // Trata os lotes para evitar duplicatas visuais e uni-los por barra (/)
                             const lotesAtuais = String(itemExistente.lote)
                                 .split('/')
                                 .map(l => l.trim())
@@ -619,7 +615,6 @@
                 });
             }
 
-            // Ordena os itens (Primeiro Destino A-Z, depois Item)
             mapeamentoColunas.forEach(pos => {
                 window.dadosResgates[pos.nome].sort((a, b) => {
                     const destA = String(a.destino).toUpperCase();
@@ -687,21 +682,33 @@
             verificarTotalGeral();
         }
 
-        function mudarAbaDetalhes(aba) {
-            window.abaDetalhes = aba;
-            document.getElementById('tab-pendentes').classList.remove('active');
-            document.getElementById('tab-resgatados').classList.remove('active');
+        function atualizarDropdownDestinos() {
+            const posicaoNome = window.posicaoAtual;
+            if (!posicaoNome || !window.dadosResgates[posicaoNome]) return;
+
+            const itens = window.dadosResgates[posicaoNome];
             
-            if(aba === 'pendentes') {
-                document.getElementById('tab-pendentes').classList.add('active');
-                document.getElementById('btn-acao-massa').className = 'btn-selecionar-todos';
-                document.getElementById('btn-acao-massa').innerHTML = '☑ Selecionar Todos';
-            } else {
-                document.getElementById('tab-resgatados').classList.add('active');
-                document.getElementById('btn-acao-massa').className = 'btn-desfazer-todos';
-                document.getElementById('btn-acao-massa').innerHTML = '☐ Desfazer Todos';
-            }
-            renderizarListaItens();
+            // Filtra os itens respeitando a aba atual (Pendentes ou Resgatados)
+            const itensVisiveis = itens.filter(itemObj => {
+                if (itemObj.indisponivel) return false;
+                if (window.abaDetalhes === 'pendentes' && itemObj.checado) return false;
+                if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return false;
+                return true;
+            });
+
+            // Pega apenas os destinos únicos e em ordem alfabética da aba atual
+            const destinosUnicos = [...new Set(itensVisiveis.map(i => i.destino))].sort((a, b) => a.localeCompare(b));
+            
+            let destHtml = `<li style="position: sticky; top: 0; background: #fff; z-index: 2; padding: 10px; border-bottom: 1px solid #e2e8f0;">
+                                <input type="text" id="busca-destino" class="busca-destino-input" placeholder="Pesquisar destino..." onkeyup="filtrarDropdownDestino()">
+                            </li>`;
+            
+            destinosUnicos.forEach(d => {
+                destHtml += `<li class="dest-item"><label><input type="checkbox" value="${d}" class="chk-destino" onchange="atualizarFiltroDestino()"> ${d}</label></li>`;
+            });
+            
+            document.getElementById('lista-destinos-chk').innerHTML = destHtml;
+            document.getElementById('lbl-destinos-selecionados').innerText = 'Todos';
         }
 
         function abrirPosicao(posicaoNome) {
@@ -734,20 +741,55 @@
             document.getElementById('filtro-validacao').innerHTML = selectVal;
             document.getElementById('filtro-validacao').value = 'TODOS'; 
 
-            const destinosUnicos = [...new Set(itensValidos.map(i => i.destino))].sort((a, b) => a.localeCompare(b));
-            let destHtml = `<li style="position: sticky; top: 0; background: #fff; z-index: 2; padding: 10px; border-bottom: 1px solid #e2e8f0;">
-                                <input type="text" id="busca-destino" class="busca-destino-input" placeholder="Pesquisar destino..." onkeyup="filtrarDropdownDestino()">
-                            </li>`;
-            
-            destinosUnicos.forEach(d => {
-                destHtml += `<li class="dest-item"><label><input type="checkbox" value="${d}" class="chk-destino" onchange="atualizarFiltroDestino()"> ${d}</label></li>`;
-            });
-            document.getElementById('lista-destinos-chk').innerHTML = destHtml;
-            document.getElementById('lbl-destinos-selecionados').innerText = 'Todos';
+            // Chama a nova função de destinos
+            atualizarDropdownDestinos();
 
             const dropdown = document.getElementById('lista-destinos-chk');
             if(dropdown) dropdown.classList.remove('visible');
 
+            renderizarListaItens();
+        }
+
+        function mudarAbaDetalhes(aba) {
+            window.abaDetalhes = aba;
+            document.getElementById('tab-pendentes').classList.remove('active');
+            document.getElementById('tab-resgatados').classList.remove('active');
+            
+            if(aba === 'pendentes') {
+                document.getElementById('tab-pendentes').classList.add('active');
+                document.getElementById('btn-acao-massa').className = 'btn-selecionar-todos';
+                document.getElementById('btn-acao-massa').innerHTML = '☑ Selecionar Todos';
+            } else {
+                document.getElementById('tab-resgatados').classList.add('active');
+                document.getElementById('btn-acao-massa').className = 'btn-desfazer-todos';
+                document.getElementById('btn-acao-massa').innerHTML = '☐ Desfazer Todos';
+            }
+
+            // Atualiza os destinos exibidos baseados na aba
+            atualizarDropdownDestinos();
+
+            renderizarListaItens();
+        }
+
+        function limparFiltros() {
+            // Reseta o filtro de validação
+            document.getElementById('filtro-validacao').value = 'TODOS';
+            
+            // Reseta a busca do destino, se existir algo digitado
+            const inputBusca = document.getElementById('busca-destino');
+            if (inputBusca) {
+                inputBusca.value = '';
+                filtrarDropdownDestino(); 
+            }
+
+            // Desmarca todos os checkboxes de destino
+            const chksDestino = document.querySelectorAll('.chk-destino');
+            chksDestino.forEach(chk => chk.checked = false);
+            
+            // Reseta o rótulo do dropdown
+            document.getElementById('lbl-destinos-selecionados').innerText = 'Todos';
+            
+            // Renderiza novamente a lista
             renderizarListaItens();
         }
 
