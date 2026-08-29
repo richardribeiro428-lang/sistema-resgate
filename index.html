@@ -569,9 +569,11 @@
                 const linha = linhas[i];
                 if (!linha || linha.length === 0) continue;
 
-                const item = linha[3]; 
-                if (!item || item === '-' || item === 'ITEM') continue;
+                const rawItem = linha[3]; 
+                if (!rawItem || rawItem === '-' || rawItem === 'ITEM') continue;
 
+                // Limpeza rigorosa de espaços e formatação para garantir a união correta
+                const item = String(rawItem).trim();
                 const lote = String(linha[5] || '-').trim();
                 const destino = String(linha[11] || 'ND').trim();
                 const validacao = String(linha[39] || '#N/D').trim();
@@ -582,21 +584,21 @@
                         let valorTotal = parseFloat(linha[pos.indexValor]);
                         if (isNaN(valorTotal)) valorTotal = 0;
 
-                        // CHAVE ÚNICA: Item + Destino + Validação (Se a validação for diferente, separa; se for igual, junta)
-                        const chaveUnica = `${String(item).trim().toUpperCase()}-${String(destino).trim().toUpperCase()}-${String(validacao).trim().toUpperCase()}`;
+                        // Chave única padronizada em maiúsculas e sem espaços extras nas pontas
+                        const chaveUnica = `${item.toUpperCase()}|${destino.toUpperCase()}|${validacao.toUpperCase()}`;
                         const itemExistente = window.dadosResgates[pos.nome].find(i => i.chaveUnica === chaveUnica);
 
                         if (itemExistente) {
                             itemExistente.qtd += qtdResgate;
                             itemExistente.valorTotal += valorTotal;
 
-                            // Acumula os lotes de forma limpa na frente, separando por barra (/) sem duplicar
+                            // Trata os lotes para evitar duplicatas visuais e uni-los por barra (/)
                             const lotesAtuais = String(itemExistente.lote)
                                 .split('/')
                                 .map(l => l.trim())
                                 .filter(Boolean);
 
-                            if (lote && !lotesAtuais.includes(lote)) {
+                            if (lote && lote !== '-' && !lotesAtuais.map(l => l.toUpperCase()).includes(lote.toUpperCase())) {
                                 lotesAtuais.push(lote);
                                 itemExistente.lote = lotesAtuais.join(' / ');
                             }
