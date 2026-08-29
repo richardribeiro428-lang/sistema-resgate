@@ -160,8 +160,8 @@
         .btn-desfazer-todos { background-color: #718096; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: background 0.2s; }
         .btn-desfazer-todos:hover { background-color: #4a5568; }
 
-        .btn-limpar-filtros { background-color: #cbd5e0; color: #2d3748; border: none; padding: 8px 13px; border-radius: 7px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 0.82rem; transition: background 0.2s; }
-        .btn-limpar-filtros:hover { background-color: #a0aec0; }
+        .btn-limpar-filtros { background-color: #fff; color: #d97706; border: 1px solid #d97706; padding: 8px 13px; border-radius: 7px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 0.82rem; transition: background 0.2s; }
+        .btn-limpar-filtros:hover { background-color: #fef3c7; }
 
         .lista-itens { list-style: none; padding: 0; margin: 0; max-height: 500px; overflow-y: auto; padding-right: 5px;}
         .lista-itens::-webkit-scrollbar { width: 8px; }
@@ -179,9 +179,10 @@
         .badge-qtd { background-color: #ed8936; color: white; padding: 5px 12px; border-radius: 12px; font-size: 0.9rem; font-weight: bold; }
         .badge-destino { color: #805ad5; font-weight: bold; }
         .badge-valid { color: #e60000; font-weight: bold; }
-        .destino-col { min-width: 190px; max-width: 240px; text-align: right; margin-left: auto; }
-        .destino-col-label { display:block; font-size:0.72rem; color:#a0aec0; font-weight:700; text-transform:uppercase; margin-bottom:4px; }
-        .destino-copiavel { color:#5b21b6; font-weight:800; font-size:0.95rem; user-select:text; cursor:text; }
+        .destino-col { min-width: 190px; max-width: 240px; text-align: right; margin-left: auto; display: flex; flex-direction: column; gap: 5px; }
+        .destino-col-label { display:inline-block; font-size:0.72rem; color:#a0aec0; font-weight:700; text-transform:uppercase; margin-bottom:2px; }
+        .destino-copiavel { display:block; color:#5b21b6; font-weight:800; font-size:0.95rem; user-select:text; cursor:text; }
+        
         .btn-copiar-destinos { background:#805ad5; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
         .btn-copiar-destinos:hover { background:#6b46c1; }
         .historico-lista { display:grid; gap:12px; text-align:left; }
@@ -250,6 +251,7 @@
     <div class="right-panel">
         <div class="main-card">
             
+            <!-- TELA HOME -->
             <div id="view-home">
                 <button class="btn-novo-resgate" id="btn-novo-resgate" onclick="iniciarNovoResgate()" style="display:none;">＋ Iniciar novo resgate</button>
                 <div class="icon-top">🏢</div>
@@ -275,6 +277,7 @@
                 </button>
             </div>
 
+            <!-- TELA DETALHES -->
             <div id="view-detalhes">
                 <button class="btn-voltar" onclick="voltarParaPastas()">&#8592; Voltar para posições</button>
                 
@@ -284,6 +287,7 @@
                         <span id="detalhes-stats" style="color: #718096; font-size: 0.9rem; font-weight: 600;"></span>
                     </div>
 
+                    <!-- Abas Pendentes / Resgatados -->
                     <div class="detalhes-tabs">
                         <button class="detalhes-tab-btn active" id="tab-pendentes" onclick="mudarAbaDetalhes('pendentes')">Pendentes (<span id="qtd-pendentes">0</span>)</button>
                         <button class="detalhes-tab-btn" id="tab-resgatados" onclick="mudarAbaDetalhes('resgatados')">Resgatados (<span id="qtd-resgatados">0</span>)</button>
@@ -319,6 +323,7 @@
                 <div id="detalhes-conteudo"></div>
             </div>
 
+            <!-- TELA HISTÓRICO -->
             <div id="view-historico" style="display:none; text-align:left; width:100%;">
                 <div class="icon-top">🗂️</div>
                 <h2>Histórico de Resgates</h2>
@@ -327,6 +332,7 @@
                 <div id="historico-conteudo"><div class="empty-dash">Carregando histórico...</div></div>
             </div>
 
+            <!-- TELA DASHBOARD -->
             <div id="view-dashboard">
                 <div class="icon-top">📈</div>
                 <h2>Visão Geral de Ganhos</h2>
@@ -362,7 +368,6 @@
         
         let graficoItens = null;
         let graficoFinanceiro = null;
-
 
         // ============================================================
         // BANCO DE DADOS ONLINE - SUPABASE
@@ -541,6 +546,9 @@
             }
         }
 
+        // ==========================================
+        // PROCESSAMENTO DA PLANILHA (INCLUI LOC FIXA)
+        // ==========================================
         document.getElementById('excel-file').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -554,13 +562,29 @@
                 const workbook = XLSX.read(data, {type: 'array'});
                 if(!workbook.Sheets["Ganho"]) { alert('Aba "Ganho" não encontrada!'); return; }
 
+                // --- MAPEAMENTO DA ABA LOC FIXA ---
+                let mapaLocFixa = {};
+                if (workbook.Sheets["LOC FIXA"]) {
+                    const jsonLocFixa = XLSX.utils.sheet_to_json(workbook.Sheets["LOC FIXA"], {header: 1});
+                    for (let i = 1; i < jsonLocFixa.length; i++) {
+                        const linhaLoc = jsonLocFixa[i];
+                        if (linhaLoc && linhaLoc.length > 1) {
+                            const skuLoc = String(linhaLoc[0] || '').trim().toUpperCase();
+                            const posFixa = String(linhaLoc[1] || '').trim();
+                            if (skuLoc && skuLoc !== 'UNDEFINED' && skuLoc !== '') {
+                                mapaLocFixa[skuLoc] = posFixa;
+                            }
+                        }
+                    }
+                }
+
                 const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets["Ganho"], {header: 1}); 
-                processarDados(jsonData);
+                processarDados(jsonData, mapaLocFixa);
             };
             reader.readAsArrayBuffer(file);
         });
 
-        function processarDados(linhas) {
+        function processarDados(linhas, mapaLocFixa) {
             window.dadosResgates = {};
             mapeamentoColunas.forEach(pos => window.dadosResgates[pos.nome] = []);
 
@@ -575,6 +599,20 @@
                 const lote = String(linha[5] || '-').trim();
                 const destino = String(linha[11] || 'ND').trim();
                 const validacao = String(linha[39] || '#N/D').trim();
+
+                // --- REGRA DE POSIÇÃO FIXA CORRIGIDA ---
+                let locFixa = "";
+                const valUpper = validacao.toUpperCase();
+                
+                // Só busca a locação fixa se NÃO for Conforme nem Aprovado
+                if (valUpper !== "CONFORME" && valUpper !== "APROVADO" && valUpper !== "CONFORME E APROVADO") {
+                    locFixa = mapaLocFixa[item.toUpperCase()] || "Não cadastrada";
+                    
+                    // Se a locação fixa for igual ao destino, limpamos para não ficar duplicado na tela
+                    if (locFixa.toUpperCase() === destino.toUpperCase()) {
+                        locFixa = "";
+                    }
+                }
 
                 mapeamentoColunas.forEach(pos => {
                     const qtdResgate = parseFloat(linha[pos.indexQtd]);
@@ -604,6 +642,7 @@
                                 item: item,
                                 lote: lote,
                                 destino: destino,
+                                locFixa: locFixa, 
                                 qtd: qtdResgate,
                                 valorTotal: valorTotal,
                                 checado: false,
@@ -686,9 +725,11 @@
             const posicaoNome = window.posicaoAtual;
             if (!posicaoNome || !window.dadosResgates[posicaoNome]) return;
 
+            const chksDestinoAntigos = document.querySelectorAll('.chk-destino');
+            const destSelecionados = Array.from(chksDestinoAntigos).filter(c => c.checked).map(c => c.value);
+
             const itens = window.dadosResgates[posicaoNome];
             
-            // Filtra os itens respeitando a aba atual (Pendentes ou Resgatados)
             const itensVisiveis = itens.filter(itemObj => {
                 if (itemObj.indisponivel) return false;
                 if (window.abaDetalhes === 'pendentes' && itemObj.checado) return false;
@@ -696,7 +737,6 @@
                 return true;
             });
 
-            // Pega apenas os destinos únicos e em ordem alfabética da aba atual
             const destinosUnicos = [...new Set(itensVisiveis.map(i => i.destino))].sort((a, b) => a.localeCompare(b));
             
             let destHtml = `<li style="position: sticky; top: 0; background: #fff; z-index: 2; padding: 10px; border-bottom: 1px solid #e2e8f0;">
@@ -704,11 +744,26 @@
                             </li>`;
             
             destinosUnicos.forEach(d => {
-                destHtml += `<li class="dest-item"><label><input type="checkbox" value="${d}" class="chk-destino" onchange="atualizarFiltroDestino()"> ${d}</label></li>`;
+                const isChecked = destSelecionados.includes(d) ? 'checked' : '';
+                destHtml += `<li class="dest-item"><label><input type="checkbox" value="${d}" class="chk-destino" onchange="atualizarFiltroDestino()" ${isChecked}> ${d}</label></li>`;
             });
             
             document.getElementById('lista-destinos-chk').innerHTML = destHtml;
-            document.getElementById('lbl-destinos-selecionados').innerText = 'Todos';
+            atualizarLabelDestinosSelecionados();
+        }
+
+        function atualizarLabelDestinosSelecionados() {
+            const checkboxes = document.querySelectorAll('.chk-destino');
+            const selecionados = Array.from(checkboxes).filter(c => c.checked).map(c => c.value);
+            const label = document.getElementById('lbl-destinos-selecionados');
+            
+            if (selecionados.length === 0) {
+                label.innerText = 'Todos';
+            } else if (selecionados.length === 1) {
+                label.innerText = selecionados[0];
+            } else {
+                label.innerText = `${selecionados.length} selecionados`;
+            }
         }
 
         function abrirPosicao(posicaoNome) {
@@ -741,7 +796,7 @@
             document.getElementById('filtro-validacao').innerHTML = selectVal;
             document.getElementById('filtro-validacao').value = 'TODOS'; 
 
-            // Chama a nova função de destinos
+            document.getElementById('lbl-destinos-selecionados').innerText = 'Todos';
             atualizarDropdownDestinos();
 
             const dropdown = document.getElementById('lista-destinos-chk');
@@ -765,31 +820,21 @@
                 document.getElementById('btn-acao-massa').innerHTML = '☐ Desfazer Todos';
             }
 
-            // Atualiza os destinos exibidos baseados na aba
             atualizarDropdownDestinos();
-
             renderizarListaItens();
         }
 
         function limparFiltros() {
-            // Reseta o filtro de validação
             document.getElementById('filtro-validacao').value = 'TODOS';
-            
-            // Reseta a busca do destino, se existir algo digitado
             const inputBusca = document.getElementById('busca-destino');
             if (inputBusca) {
                 inputBusca.value = '';
                 filtrarDropdownDestino(); 
             }
-
-            // Desmarca todos os checkboxes de destino
             const chksDestino = document.querySelectorAll('.chk-destino');
             chksDestino.forEach(chk => chk.checked = false);
             
-            // Reseta o rótulo do dropdown
-            document.getElementById('lbl-destinos-selecionados').innerText = 'Todos';
-            
-            // Renderiza novamente a lista
+            atualizarLabelDestinosSelecionados();
             renderizarListaItens();
         }
 
@@ -824,17 +869,7 @@
         }
 
         function atualizarFiltroDestino() {
-            const checkboxes = document.querySelectorAll('.chk-destino');
-            const selecionados = Array.from(checkboxes).filter(c => c.checked).map(c => c.value);
-            const label = document.getElementById('lbl-destinos-selecionados');
-            
-            if (selecionados.length === 0) {
-                label.innerText = 'Todos';
-            } else if (selecionados.length === 1) {
-                label.innerText = selecionados[0];
-            } else {
-                label.innerText = `${selecionados.length} selecionados`;
-            }
+            atualizarLabelDestinosSelecionados();
             renderizarListaItens();
         }
 
@@ -873,6 +908,18 @@
                 
                 const somenteLeitura = window.modoHistorico ? 'disabled' : '';
                 const btnFalta = window.modoHistorico ? '' : `<button class="btn-falta" onclick="marcarIndisponivel('${posicaoNome}', ${index})" title="Remover item da lista">🚫 Falta</button>`;
+                
+                // HTML da Locação Fixa se houver
+                let htmlLocFixa = '';
+                if (itemObj.locFixa) {
+                    htmlLocFixa = `
+                        <div style="margin-top: 5px; border-top: 1px dashed #cbd5e0; padding-top: 4px;">
+                            <span class="destino-col-label" style="color: #d97706;">Loc. Fixa</span>
+                            <span class="destino-copiavel" style="color: #d97706;">${itemObj.locFixa}</span>
+                        </div>
+                    `;
+                }
+
                 listaHtml += `
                     <li class="item-row ${classeMarcado}">
                         <input type="checkbox" ${checado} ${somenteLeitura} onchange="alternarCheck('${posicaoNome}', ${index})">
@@ -883,8 +930,11 @@
                             </span>
                         </div>
                         <div class="destino-col">
-                            <span class="destino-col-label">Destino</span>
-                            <span class="destino-copiavel">${itemObj.destino}</span>
+                            <div>
+                                <span class="destino-col-label">Destino</span>
+                                <span class="destino-copiavel">${itemObj.destino}</span>
+                            </div>
+                            ${htmlLocFixa}
                         </div>
                         <span class="badge-qtd">Qtd: ${itemObj.qtd}</span>
                         ${btnFalta}
@@ -906,6 +956,8 @@
 
             window.dadosResgates[posicaoNome][index].checado = !window.dadosResgates[posicaoNome][index].checado;
             salvarEstado();
+            
+            atualizarDropdownDestinos();
             renderizarListaItens(); 
 
             const novoContainer = document.querySelector('.lista-itens');
@@ -935,6 +987,7 @@
             });
 
             salvarEstado();
+            atualizarDropdownDestinos();
             renderizarListaItens();
         }
 
@@ -945,6 +998,7 @@
                 window.dadosResgates[posicaoNome][index].indisponivel = true;
                 window.dadosResgates[posicaoNome][index].checado = false;
                 salvarEstado();
+                atualizarDropdownDestinos();
                 renderizarListaItens();
             }
         }
@@ -1263,13 +1317,17 @@
                         linhasVermelhas.push(rowIndex);
                         dadosExportacao.push({
                             "SKU": item.item, "QUANTIDADE RESGATADA": item.qtd, "QUAL RESGATE": pos.nome,
-                            "LOTE": item.lote, "DESTINO": item.destino, "VALIDAÇÃO QUALIDADE GB": item.validacao,
+                            "LOTE": item.lote, "DESTINO": item.destino, 
+                            "LOC. FIXA": item.locFixa ? item.locFixa : "-", 
+                            "VALIDAÇÃO QUALIDADE GB": item.validacao,
                             "VALOR": formatarMoeda(item.valorTotal), "STATUS (NO SISTEMA)": "Indisponível / Falta"
                         });
                     } else {
                         dadosExportacao.push({
                             "SKU": item.item, "QUANTIDADE RESGATADA": item.qtd, "QUAL RESGATE": pos.nome,
-                            "LOTE": item.lote, "DESTINO": item.destino, "VALIDAÇÃO QUALIDADE GB": item.validacao,
+                            "LOTE": item.lote, "DESTINO": item.destino, 
+                            "LOC. FIXA": item.locFixa ? item.locFixa : "-", 
+                            "VALIDAÇÃO QUALIDADE GB": item.validacao,
                             "VALOR": formatarMoeda(item.valorTotal), "STATUS (NO SISTEMA)": item.checado ? "Concluído" : "Pendente"
                         });
                     }
