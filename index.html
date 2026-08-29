@@ -141,10 +141,11 @@
         .filtro-box-inner { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; flex-grow: 1; }
         .filtro-item { display: flex; align-items: center; gap: 5px; }
         .filtro-item label { font-weight: 700; color: #2b6cb0; font-size: 0.85rem; }
-        .filtro-item select { padding: 6px 10px; border-radius: 6px; border: 1px solid #90cdf4; outline: none; font-family: inherit; font-weight: 600; color: #2c5282; max-width: 250px; font-size: 0.85rem;}
+        .filtro-item select, .filtro-item input[type="text"] { padding: 6px 10px; border-radius: 6px; border: 1px solid #90cdf4; outline: none; font-family: inherit; font-weight: 600; color: #2c5282; font-size: 0.85rem; }
+        .filtro-item select { max-width: 250px; }
         
         /* Dropdown Multi-Select Destino (COM BUSCA) */
-        .dropdown-check-list { position: relative; display: inline-block; width: 250px; }
+        .dropdown-check-list { position: relative; display: inline-block; width: 200px; }
         .dropdown-check-list .anchor { padding: 6px 10px; border-radius: 6px; border: 1px solid #90cdf4; cursor: pointer; background: #fff; color: #2c5282; font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; user-select: none; }
         .dropdown-check-list .items { display: none; position: absolute; top: 100%; left: 0; background: #fff; border: 1px solid #90cdf4; border-radius: 6px; max-height: 300px; overflow-y: auto; width: 100%; z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 0; margin: 5px 0 0 0; }
         .dropdown-check-list .items.visible { display: block; }
@@ -160,6 +161,7 @@
         .btn-desfazer-todos { background-color: #718096; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: background 0.2s; }
         .btn-desfazer-todos:hover { background-color: #4a5568; }
 
+        /* BOTÃO LIMPAR FILTROS DESTACADO */
         .btn-limpar-filtros { background-color: #fff; color: #d97706; border: 1px solid #d97706; padding: 8px 13px; border-radius: 7px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 0.82rem; transition: background 0.2s; }
         .btn-limpar-filtros:hover { background-color: #fef3c7; }
 
@@ -179,9 +181,14 @@
         .badge-qtd { background-color: #ed8936; color: white; padding: 5px 12px; border-radius: 12px; font-size: 0.9rem; font-weight: bold; }
         .badge-destino { color: #805ad5; font-weight: bold; }
         .badge-valid { color: #e60000; font-weight: bold; }
+        
         .destino-col { min-width: 190px; max-width: 240px; text-align: right; margin-left: auto; display: flex; flex-direction: column; gap: 5px; }
         .destino-col-label { display:inline-block; font-size:0.72rem; color:#a0aec0; font-weight:700; text-transform:uppercase; margin-bottom:2px; }
-        .destino-copiavel { display:block; color:#5b21b6; font-weight:800; font-size:0.95rem; user-select:text; cursor:text; }
+        .destino-copiavel { display:block; color:#5b21b6; font-weight:800; font-size:0.95rem; user-select:text; }
+        
+        /* ÍCONE DE LÁPIS PARA EDIÇÃO */
+        .edit-icon { cursor: pointer; font-size: 0.8rem; margin-left: 5px; opacity: 0.6; transition: opacity 0.2s; }
+        .edit-icon:hover { opacity: 1; }
         
         .btn-copiar-destinos { background:#805ad5; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
         .btn-copiar-destinos:hover { background:#6b46c1; }
@@ -296,8 +303,12 @@
                     <div class="filtro-box">
                         <div class="filtro-box-inner">
                             <div class="filtro-item">
+                                <label>SKU:</label>
+                                <input type="text" id="filtro-sku" onkeyup="renderizarListaItens()" placeholder="Buscar SKU..." style="max-width: 130px;">
+                            </div>
+                            <div class="filtro-item">
                                 <label>Validação:</label>
-                                <select id="filtro-validacao" onchange="renderizarListaItens()">
+                                <select id="filtro-validacao" onchange="aoMudarValidacao()">
                                     <option value="TODOS">Todas (Ver Todos)</option>
                                 </select>
                             </div>
@@ -312,7 +323,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top: 10px;">
                             <button class="btn-limpar-filtros" onclick="limparFiltros()">🧹 Limpar Filtros</button>
                             <button class="btn-copiar-destinos" onclick="copiarDestinosVisiveis()">📋 Copiar destinos</button>
                             <button id="btn-acao-massa" class="btn-selecionar-todos" onclick="acaoTodosVisiveis()">☑ Selecionar Todos</button>
@@ -600,15 +611,13 @@
                 const destino = String(linha[11] || 'ND').trim();
                 const validacao = String(linha[39] || '#N/D').trim();
 
-                // --- REGRA DE POSIÇÃO FIXA CORRIGIDA ---
+                // --- REGRA DE POSIÇÃO FIXA ---
                 let locFixa = "";
                 const valUpper = validacao.toUpperCase();
                 
-                // Só busca a locação fixa se NÃO for Conforme nem Aprovado
                 if (valUpper !== "CONFORME" && valUpper !== "APROVADO" && valUpper !== "CONFORME E APROVADO") {
                     locFixa = mapaLocFixa[item.toUpperCase()] || "Não cadastrada";
                     
-                    // Se a locação fixa for igual ao destino, limpamos para não ficar duplicado na tela
                     if (locFixa.toUpperCase() === destino.toUpperCase()) {
                         locFixa = "";
                     }
@@ -721,9 +730,17 @@
             verificarTotalGeral();
         }
 
+        function aoMudarValidacao() {
+            atualizarDropdownDestinos();
+            renderizarListaItens();
+        }
+
         function atualizarDropdownDestinos() {
             const posicaoNome = window.posicaoAtual;
             if (!posicaoNome || !window.dadosResgates[posicaoNome]) return;
+
+            const selectVal = document.getElementById('filtro-validacao');
+            const filtroVal = selectVal ? selectVal.value : 'TODOS';
 
             const chksDestinoAntigos = document.querySelectorAll('.chk-destino');
             const destSelecionados = Array.from(chksDestinoAntigos).filter(c => c.checked).map(c => c.value);
@@ -734,6 +751,7 @@
                 if (itemObj.indisponivel) return false;
                 if (window.abaDetalhes === 'pendentes' && itemObj.checado) return false;
                 if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return false;
+                if (filtroVal !== 'TODOS' && itemObj.validacao !== filtroVal) return false;
                 return true;
             });
 
@@ -797,6 +815,8 @@
             document.getElementById('filtro-validacao').value = 'TODOS'; 
 
             document.getElementById('lbl-destinos-selecionados').innerText = 'Todos';
+            document.getElementById('filtro-sku').value = ''; // Limpa filtro SKU
+            
             atualizarDropdownDestinos();
 
             const dropdown = document.getElementById('lista-destinos-chk');
@@ -826,11 +846,15 @@
 
         function limparFiltros() {
             document.getElementById('filtro-validacao').value = 'TODOS';
+            document.getElementById('filtro-sku').value = ''; // Limpa o SKU
+            
             const inputBusca = document.getElementById('busca-destino');
             if (inputBusca) {
                 inputBusca.value = '';
-                filtrarDropdownDestino(); 
             }
+
+            atualizarDropdownDestinos();
+            
             const chksDestino = document.querySelectorAll('.chk-destino');
             chksDestino.forEach(chk => chk.checked = false);
             
@@ -873,9 +897,38 @@
             renderizarListaItens();
         }
 
+        // ==========================================
+        // FUNÇÕES PARA EDIÇÃO DE DESTINO E LOC FIXA
+        // ==========================================
+        function editarDestino(posicaoNome, index) {
+            if (window.modoHistorico) return;
+            const atual = window.dadosResgates[posicaoNome][index].destino;
+            const novo = prompt("Digite o novo Destino:", atual);
+            
+            if (novo !== null && novo.trim() !== "") {
+                window.dadosResgates[posicaoNome][index].destino = novo.trim();
+                salvarEstado();
+                atualizarDropdownDestinos();
+                renderizarListaItens();
+            }
+        }
+
+        function editarLocFixa(posicaoNome, index) {
+            if (window.modoHistorico) return;
+            const atual = window.dadosResgates[posicaoNome][index].locFixa;
+            const novo = prompt("Digite a nova Locação Fixa (deixe em branco para limpar):", atual);
+            
+            if (novo !== null) {
+                window.dadosResgates[posicaoNome][index].locFixa = novo.trim();
+                salvarEstado();
+                renderizarListaItens();
+            }
+        }
+
         function renderizarListaItens() {
             const posicaoNome = window.posicaoAtual;
             const filtroVal = document.getElementById('filtro-validacao').value;
+            const filtroSku = document.getElementById('filtro-sku').value.toUpperCase().trim(); // Filtro SKU
             
             const chksDestino = document.querySelectorAll('.chk-destino');
             const destSelecionados = Array.from(chksDestino).filter(c => c.checked).map(c => c.value);
@@ -901,6 +954,9 @@
                 if (filtroVal !== 'TODOS' && itemObj.validacao !== filtroVal) return;
                 if (destSelecionados.length > 0 && !destSelecionados.includes(itemObj.destino)) return;
                 
+                // Aplica Filtro SKU
+                if (filtroSku && !itemObj.item.toUpperCase().includes(filtroSku)) return;
+                
                 qtdFiltrada++;
                 somaPecas += itemObj.qtd;
                 const checado = itemObj.checado ? 'checked' : '';
@@ -909,13 +965,16 @@
                 const somenteLeitura = window.modoHistorico ? 'disabled' : '';
                 const btnFalta = window.modoHistorico ? '' : `<button class="btn-falta" onclick="marcarIndisponivel('${posicaoNome}', ${index})" title="Remover item da lista">🚫 Falta</button>`;
                 
-                // HTML da Locação Fixa se houver
+                // HTML da Locação Fixa se houver + Ícone Lápis
                 let htmlLocFixa = '';
                 if (itemObj.locFixa) {
                     htmlLocFixa = `
                         <div style="margin-top: 5px; border-top: 1px dashed #cbd5e0; padding-top: 4px;">
                             <span class="destino-col-label" style="color: #d97706;">Loc. Fixa</span>
-                            <span class="destino-copiavel" style="color: #d97706;">${itemObj.locFixa}</span>
+                            <span class="destino-copiavel" style="color: #d97706;">
+                                ${itemObj.locFixa} 
+                                ${window.modoHistorico ? '' : `<span class="edit-icon" onclick="editarLocFixa('${posicaoNome}', ${index})" title="Editar Locação Fixa">✏️</span>`}
+                            </span>
                         </div>
                     `;
                 }
@@ -932,7 +991,10 @@
                         <div class="destino-col">
                             <div>
                                 <span class="destino-col-label">Destino</span>
-                                <span class="destino-copiavel">${itemObj.destino}</span>
+                                <span class="destino-copiavel">
+                                    ${itemObj.destino}
+                                    ${window.modoHistorico ? '' : `<span class="edit-icon" onclick="editarDestino('${posicaoNome}', ${index})" title="Editar Destino">✏️</span>`}
+                                </span>
                             </div>
                             ${htmlLocFixa}
                         </div>
@@ -970,6 +1032,7 @@
             const filtroVal = document.getElementById('filtro-validacao').value;
             const chksDestino = document.querySelectorAll('.chk-destino');
             const destSelecionados = Array.from(chksDestino).filter(c => c.checked).map(c => c.value);
+            const filtroSku = document.getElementById('filtro-sku').value.toUpperCase().trim();
             
             const itens = window.dadosResgates[posicaoNome];
             const estadoNovo = window.abaDetalhes === 'pendentes' ? true : false;
@@ -982,6 +1045,7 @@
                 
                 if (filtroVal !== 'TODOS' && itemObj.validacao !== filtroVal) return;
                 if (destSelecionados.length > 0 && !destSelecionados.includes(itemObj.destino)) return;
+                if (filtroSku && !itemObj.item.toUpperCase().includes(filtroSku)) return;
 
                 itemObj.checado = estadoNovo;
             });
@@ -1010,6 +1074,8 @@
             const filtroVal = document.getElementById('filtro-validacao').value;
             const chksDestino = document.querySelectorAll('.chk-destino');
             const destSelecionados = Array.from(chksDestino).filter(c => c.checked).map(c => c.value);
+            const filtroSku = document.getElementById('filtro-sku').value.toUpperCase().trim();
+
             const itens = window.dadosResgates[posicaoNome] || [];
             const destinos = itens.filter(itemObj => {
                 if (itemObj.indisponivel) return false;
@@ -1017,6 +1083,7 @@
                 if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return false;
                 if (filtroVal !== 'TODOS' && itemObj.validacao !== filtroVal) return false;
                 if (destSelecionados.length > 0 && !destSelecionados.includes(itemObj.destino)) return false;
+                if (filtroSku && !itemObj.item.toUpperCase().includes(filtroSku)) return false;
                 return true;
             }).map(i => i.destino);
 
