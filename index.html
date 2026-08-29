@@ -163,6 +163,14 @@
         .btn-limpar-filtros { background-color: #fff; color: #d97706; border: 1px solid #d97706; padding: 8px 13px; border-radius: 7px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 0.82rem; transition: background 0.2s; }
         .btn-limpar-filtros:hover { background-color: #fef3c7; }
 
+        /* BOTÕES DE CÓPIA COLORIDOS */
+        .btn-copiar-destinos { background:#805ad5; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
+        .btn-copiar-destinos:hover { background:#6b46c1; }
+        .btn-copiar-loc { background:#ed8936; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
+        .btn-copiar-loc:hover { background:#dd6b20; }
+        .btn-copiar-sku { background:#38a169; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
+        .btn-copiar-sku:hover { background:#2f855a; }
+
         .lista-itens { list-style: none; padding: 0; margin: 0; max-height: 500px; overflow-y: auto; padding-right: 5px;}
         .lista-itens::-webkit-scrollbar { width: 8px; }
         .lista-itens::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
@@ -188,8 +196,6 @@
         .edit-icon { cursor: pointer; font-size: 0.8rem; margin-left: 5px; opacity: 0.6; transition: opacity 0.2s; }
         .edit-icon:hover { opacity: 1; }
         
-        .btn-copiar-destinos { background:#805ad5; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
-        .btn-copiar-destinos:hover { background:#6b46c1; }
         .historico-lista { display:grid; gap:12px; text-align:left; }
         .historico-card { border:1px solid #e2e8f0; border-radius:12px; padding:16px; display:flex; justify-content:space-between; align-items:center; gap:15px; }
         .historico-card h4 { margin:0 0 5px; color:#001529; }
@@ -277,7 +283,15 @@
                     <input type="file" id="excel-file" accept=".xlsx, .xls, .xlsm" />
                 </div>
 
-                <button type="button" onclick="limparDadosSalvos()" style="margin-top:10px; background:#fff; color:#e60000; border:1px solid #e60000; padding:10px 16px; border-radius:8px; cursor:pointer; font-family:inherit; font-weight:600;">
+                <!-- UPDATE DE LOCAÇÕES FIXAS -->
+                <div class="upload-wrapper" id="update-loc-wrapper" style="display:none; margin-top: 15px;">
+                    <label for="excel-update-loc" class="dashed-btn" style="border-color: #ed8936; color: #dd6b20; background-color: #fffaf0;">
+                        <span>🔄</span> <text id="upload-update-text">Atualizar Locações Fixas (SKU x POSIÇÃO)</text>
+                    </label>
+                    <input type="file" id="excel-update-loc" accept=".xlsx, .xls, .xlsm" />
+                </div>
+
+                <button type="button" onclick="limparDadosSalvos()" style="margin-top:20px; background:#fff; color:#e60000; border:1px solid #e60000; padding:10px 16px; border-radius:8px; cursor:pointer; font-family:inherit; font-weight:600;">
                     🗑️ Limpar dados salvos na nuvem
                 </button>
             </div>
@@ -340,7 +354,9 @@
                         </div>
                         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top: 10px;">
                             <button class="btn-limpar-filtros" onclick="limparFiltros()">🧹 Limpar Filtros</button>
-                            <button class="btn-copiar-destinos" onclick="copiarDestinosVisiveis()">📋 Copiar destinos</button>
+                            <button class="btn-copiar-sku" onclick="copiarSKUsVisiveis()">📋 Copiar SKUs</button>
+                            <button class="btn-copiar-destinos" onclick="copiarDestinosVisiveis()">📋 Copiar Destinos</button>
+                            <button class="btn-copiar-loc" onclick="copiarLocFixaVisiveis()">📋 Copiar Loc. Fixas</button>
                             <button id="btn-acao-massa" class="btn-selecionar-todos" onclick="acaoTodosVisiveis()">☑ Selecionar Todos</button>
                         </div>
                     </div>
@@ -532,6 +548,7 @@
                 document.getElementById('view-home').style.display = 'block';
                 document.getElementById('view-posicoes').innerHTML = '';
                 document.getElementById('btn-exportar').style.display = 'none';
+                document.getElementById('update-loc-wrapper').style.display = 'none';
                 document.getElementById('upload-text').innerText = "Adicionar planilha de ganhos";
                 document.getElementById('subtitle-text').innerText = "Faça o upload da planilha para carregar os locais de resgate.";
 
@@ -573,7 +590,7 @@
         }
 
         // ==========================================
-        // PROCESSAMENTO DA PLANILHA (INCLUI LOC FIXA)
+        // PROCESSAMENTO DA PLANILHA PRINCIPAL
         // ==========================================
         document.getElementById('excel-file').addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -608,6 +625,64 @@
             };
             reader.readAsArrayBuffer(file);
         });
+
+        // ==========================================
+        // ATUALIZAÇÃO EM LOTE DE LOCAÇÕES FIXAS (PENDENTES)
+        // ==========================================
+        document.getElementById('excel-update-loc').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const sheetName = workbook.SheetNames[0]; 
+                const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {header: 1}); 
+                
+                let mapaUpdate = {};
+                for (let i = 1; i < jsonData.length; i++) {
+                    const linha = jsonData[i];
+                    if (linha && linha.length >= 2) {
+                        const sku = String(linha[0] || '').trim().toUpperCase();
+                        const loc = String(linha[1] || '').trim();
+                        if (sku && sku !== '') {
+                            mapaUpdate[sku] = loc;
+                        }
+                    }
+                }
+
+                let atualizados = 0;
+                Object.keys(window.dadosResgates).forEach(posicao => {
+                    window.dadosResgates[posicao].forEach(item => {
+                        // REGRA: Atualizar SOMENTE itens PENDENTES e NÃO-INDISPONÍVEIS
+                        if (!item.checado && !item.indisponivel) { 
+                            if (mapaUpdate[item.item.toUpperCase()] !== undefined) {
+                                let novaLoc = mapaUpdate[item.item.toUpperCase()];
+                                // Se a nova loc for igual ao destino, não exibe
+                                if (novaLoc.toUpperCase() === item.destino.toUpperCase()) {
+                                    novaLoc = "";
+                                }
+                                item.locFixa = novaLoc;
+                                atualizados++;
+                            }
+                        }
+                    });
+                });
+
+                if (atualizados > 0) {
+                    salvarEstado();
+                    alert(`${atualizados} item(ns) pendente(s) tiveram a locação fixa atualizada!`);
+                    renderizarPastas();
+                } else {
+                    alert('Nenhum item pendente precisou ser atualizado ou SKUs não encontrados.');
+                }
+                
+                document.getElementById('excel-update-loc').value = ''; 
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
 
         function processarDados(linhas, mapaLocFixa) {
             window.dadosResgates = {};
@@ -706,10 +781,15 @@
         function renderizarPastas() {
             document.getElementById('view-detalhes').style.display = 'none';
             document.getElementById('view-home').style.display = 'block';
+            
             const btnNovo = document.getElementById('btn-novo-resgate');
             const btnArquivar = document.getElementById('btn-arquivar');
+            const btnUpdateLoc = document.getElementById('update-loc-wrapper');
+
             btnNovo.style.display = window.modoHistorico ? 'block' : 'none';
             btnArquivar.style.display = (window.planilhaCarregada && !window.modoHistorico) ? 'block' : 'none';
+            if (btnUpdateLoc) btnUpdateLoc.style.display = (window.planilhaCarregada && !window.modoHistorico) ? 'block' : 'none';
+            
             if (window.modoHistorico) {
                 document.getElementById('subtitle-text').innerText = `Visualização do histórico: ${window.nomeHistoricoAtual}`;
             }
@@ -779,7 +859,7 @@
 
         function aoMudarFiltro() {
             atualizarLabelsFiltros();
-            atualizarVisibilidadeDropdowns(); // Cross-filtering visual
+            atualizarVisibilidadeDropdowns(); 
             renderizarListaItens();
         }
 
@@ -793,7 +873,6 @@
 
             const itens = window.dadosResgates[posicaoNome];
             
-            // Itens totais presentes na aba aberta (ignora checks de filtros aqui, porque as listas precisam de todas as opções da aba)
             const itensAba = itens.filter(itemObj => {
                 if (itemObj.indisponivel) return false;
                 if (window.abaDetalhes === 'pendentes' && itemObj.checado) return false;
@@ -821,10 +900,9 @@
             document.getElementById('lista-destinos-chk').innerHTML = buildHtml(destsUnicos, destsSel, 'busca-destino', 'dest-item', 'chk-destino', 'Pesquisar Destino...');
             
             atualizarLabelsFiltros();
-            atualizarVisibilidadeDropdowns(); // Cross-filtering
+            atualizarVisibilidadeDropdowns(); 
         }
 
-        // Esta função esconde dos dropdowns as opções que não cruzam com os filtros selecionados
         function atualizarVisibilidadeDropdowns() {
             const posicaoNome = window.posicaoAtual;
             if (!posicaoNome || !window.dadosResgates[posicaoNome]) return;
@@ -842,7 +920,6 @@
                 return true;
             });
 
-            // Lógica Cruzada
             const validSkus = new Set(itensAba.filter(i => 
                 (valsSel.length === 0 || valsSel.includes(i.validacao)) && 
                 (destsSel.length === 0 || destsSel.includes(i.destino))
@@ -858,7 +935,6 @@
                 (valsSel.length === 0 || valsSel.includes(i.validacao))
             ).map(i => i.destino));
 
-            // Aplica visibilidade no HTML salvando num dataset (pra não sobrepor a busca de texto)
             document.querySelectorAll('.sku-item').forEach(li => {
                 const val = li.querySelector('input').value;
                 li.setAttribute('data-cross-valid', validSkus.has(val) ? "true" : "false");
@@ -874,7 +950,6 @@
                 li.setAttribute('data-cross-valid', validDests.has(val) ? "true" : "false");
             });
 
-            // Refaz a busca textual pra aplicar o display corretamente
             filtrarDropdown('busca-sku', 'sku-item');
             filtrarDropdown('busca-validacao', 'validacao-item');
             filtrarDropdown('busca-destino', 'dest-item');
@@ -911,13 +986,16 @@
             checkboxes.forEach(chk => chk.checked = false);
             
             atualizarLabelsFiltros();
-            atualizarVisibilidadeDropdowns(); // Reseta cruzas
+            atualizarVisibilidadeDropdowns(); 
             
             if(renderizar) {
                 renderizarListaItens();
             }
         }
 
+        // ==========================================
+        // FUNÇÕES CENTRAIS DA TELA E EDIÇÃO
+        // ==========================================
         function abrirPosicao(posicaoNome) {
             document.getElementById('view-home').style.display = 'none';
             document.getElementById('view-detalhes').style.display = 'block';
@@ -940,8 +1018,8 @@
             document.getElementById('btn-acao-massa').innerHTML = '☑ Selecionar Todos';
             document.getElementById('btn-acao-massa').style.display = window.modoHistorico ? 'none' : 'block';
 
-            limparFiltros(false); // Zera e não renderiza ainda
-            atualizarDropdowns(); // Constrói dropdowns baseados na aba atual
+            limparFiltros(false); 
+            atualizarDropdowns(); 
             renderizarListaItens();
         }
 
@@ -960,13 +1038,10 @@
                 document.getElementById('btn-acao-massa').innerHTML = '☐ Desfazer Todos';
             }
 
-            atualizarDropdowns(); // Reconstrói opções da aba correspondente
+            atualizarDropdowns(); 
             renderizarListaItens();
         }
 
-        // ==========================================
-        // FUNÇÕES PARA EDIÇÃO DE DESTINO E LOC FIXA
-        // ==========================================
         function editarDestino(posicaoNome, index) {
             if (window.modoHistorico) return;
             const atual = window.dadosResgates[posicaoNome][index].destino;
@@ -992,35 +1067,49 @@
             }
         }
 
-        function renderizarListaItens() {
+        // ==========================================
+        // OBTENÇÃO DE ITENS E AÇÕES EM MASSA (CÓPIAS E CHECKS)
+        // ==========================================
+        function obterItensFiltrados() {
             const posicaoNome = window.posicaoAtual;
-            
             const skusSel = getSelecionados('.chk-sku');
             const valsSel = getSelecionados('.chk-validacao');
             const destsSel = getSelecionados('.chk-destino');
 
-            const itens = window.dadosResgates[posicaoNome];
-            if (!itens) return;
+            const itens = window.dadosResgates[posicaoNome] || [];
+            return itens.filter(itemObj => {
+                if (itemObj.indisponivel) return false;
+                if (window.abaDetalhes === 'pendentes' && itemObj.checado) return false;
+                if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return false;
+                if (skusSel.length > 0 && !skusSel.includes(itemObj.item)) return false;
+                if (valsSel.length > 0 && !valsSel.includes(itemObj.validacao)) return false;
+                if (destsSel.length > 0 && !destsSel.includes(itemObj.destino)) return false;
+                return true;
+            });
+        }
+
+        function renderizarListaItens() {
+            const posicaoNome = window.posicaoAtual;
+            const itensVisiveis = obterItensFiltrados();
+            const todosItens = window.dadosResgates[posicaoNome] || [];
             
             let listaHtml = '<ul class="lista-itens">';
             let qtdFiltrada = 0;
             let somaPecas = 0;
-            
             let countPendentes = 0;
             let countResgatados = 0;
 
-            itens.forEach((itemObj, index) => {
-                if (itemObj.indisponivel) return;
+            // Para os contadores de aba, contamos todos (sem filtro de validação/sku/destino)
+            todosItens.forEach(i => {
+                if (!i.indisponivel) {
+                    if (i.checado) countResgatados++;
+                    else countPendentes++;
+                }
+            });
 
-                if(itemObj.checado) countResgatados++;
-                else countPendentes++;
-
-                if (window.abaDetalhes === 'pendentes' && itemObj.checado) return;
-                if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return;
-
-                if (skusSel.length > 0 && !skusSel.includes(itemObj.item)) return;
-                if (valsSel.length > 0 && !valsSel.includes(itemObj.validacao)) return;
-                if (destsSel.length > 0 && !destsSel.includes(itemObj.destino)) return;
+            // Usando for normal para manter o index original correto nas chamadas onclick
+            todosItens.forEach((itemObj, index) => {
+                if (!itensVisiveis.includes(itemObj)) return; // Pula os que não passaram no filtro
                 
                 qtdFiltrada++;
                 somaPecas += itemObj.qtd;
@@ -1092,25 +1181,10 @@
 
         function acaoTodosVisiveis() {
             if (window.modoHistorico) return;
-            const posicaoNome = window.posicaoAtual;
-            
-            const skusSel = getSelecionados('.chk-sku');
-            const valsSel = getSelecionados('.chk-validacao');
-            const destsSel = getSelecionados('.chk-destino');
-            
-            const itens = window.dadosResgates[posicaoNome];
+            const itensVisiveis = obterItensFiltrados();
             const estadoNovo = window.abaDetalhes === 'pendentes' ? true : false;
 
-            itens.forEach((itemObj) => {
-                if (itemObj.indisponivel) return;
-                
-                if (window.abaDetalhes === 'pendentes' && itemObj.checado) return;
-                if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return;
-                
-                if (skusSel.length > 0 && !skusSel.includes(itemObj.item)) return;
-                if (valsSel.length > 0 && !valsSel.includes(itemObj.validacao)) return;
-                if (destsSel.length > 0 && !destsSel.includes(itemObj.destino)) return;
-
+            itensVisiveis.forEach(itemObj => {
                 itemObj.checado = estadoNovo;
             });
 
@@ -1133,39 +1207,44 @@
 
         function voltarParaPastas() { renderizarPastas(); }
 
-        async function copiarDestinosVisiveis() {
-            const posicaoNome = window.posicaoAtual;
-            
-            const skusSel = getSelecionados('.chk-sku');
-            const valsSel = getSelecionados('.chk-validacao');
-            const destsSel = getSelecionados('.chk-destino');
-
-            const itens = window.dadosResgates[posicaoNome] || [];
-            const destinos = itens.filter(itemObj => {
-                if (itemObj.indisponivel) return false;
-                if (window.abaDetalhes === 'pendentes' && itemObj.checado) return false;
-                if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return false;
-                if (skusSel.length > 0 && !skusSel.includes(itemObj.item)) return false;
-                if (valsSel.length > 0 && !valsSel.includes(itemObj.validacao)) return false;
-                if (destsSel.length > 0 && !destsSel.includes(itemObj.destino)) return false;
-                return true;
-            }).map(i => i.destino);
-
-            if (!destinos.length) { alert('Nenhum destino visível para copiar.'); return; }
+        // --- CÓPIAS ---
+        async function copiarTexto(texto, msgSucesso) {
             try {
-                await navigator.clipboard.writeText(destinos.join('\n'));
-                atualizarStatusNuvem(`📋 ${destinos.length} destino(s) copiado(s)`);
+                await navigator.clipboard.writeText(texto);
+                atualizarStatusNuvem(`📋 ${msgSucesso}`);
             } catch (erro) {
                 const area = document.createElement('textarea');
-                area.value = destinos.join('\n');
+                area.value = texto;
                 document.body.appendChild(area);
                 area.select();
                 document.execCommand('copy');
                 area.remove();
-                alert(`${destinos.length} destino(s) copiado(s).`);
+                alert(msgSucesso);
             }
         }
 
+        async function copiarDestinosVisiveis() {
+            const destinos = obterItensFiltrados().map(i => i.destino);
+            if (!destinos.length) { alert('Nenhum destino visível para copiar.'); return; }
+            copiarTexto(destinos.join('\n'), `${destinos.length} destino(s) copiado(s).`);
+        }
+
+        async function copiarLocFixaVisiveis() {
+            const locs = obterItensFiltrados().filter(i => i.locFixa && i.locFixa.trim() !== '').map(i => i.locFixa);
+            if (!locs.length) { alert('Nenhuma locação fixa visível para copiar.'); return; }
+            copiarTexto(locs.join('\n'), `${locs.length} locação(ões) fixa(s) copiada(s).`);
+        }
+
+        async function copiarSKUsVisiveis() {
+            const skus = obterItensFiltrados().map(i => i.item);
+            if (!skus.length) { alert('Nenhum SKU visível para copiar.'); return; }
+            copiarTexto(skus.join('\n'), `${skus.length} SKU(s) copiado(s).`);
+        }
+
+
+        // ==========================================
+        // ARQUIVAMENTO E HISTÓRICO
+        // ==========================================
         async function arquivarResgate() {
             if (!supabaseClient || !window.planilhaCarregada) return;
             const nome = prompt('Digite um nome para este resgate finalizado:', `Resgate ${new Date().toLocaleDateString('pt-BR')}`);
@@ -1193,6 +1272,7 @@
                 window.modoHistorico = false;
                 window.nomeHistoricoAtual = '';
                 document.getElementById('excel-file').value = '';
+                document.getElementById('excel-update-loc').value = '';
                 document.getElementById('upload-text').innerText = 'Adicionar planilha de ganhos';
                 document.getElementById('subtitle-text').innerText = 'Resgate arquivado. Você já pode iniciar outro.';
                 renderizarPastas();
@@ -1260,11 +1340,13 @@
             window.modoHistorico = false;
             window.nomeHistoricoAtual = '';
             document.getElementById('excel-file').value = '';
+            document.getElementById('excel-update-loc').value = '';
             document.getElementById('upload-text').innerText = 'Adicionar planilha de ganhos';
             document.getElementById('subtitle-text').innerText = 'Faça o upload da planilha para carregar os locais de resgate.';
             document.getElementById('view-posicoes').innerHTML = '';
             document.getElementById('btn-exportar').style.display = 'none';
             document.getElementById('btn-arquivar').style.display = 'none';
+            document.getElementById('update-loc-wrapper').style.display = 'none';
             document.getElementById('btn-novo-resgate').style.display = 'none';
             atualizarStatusNuvem('☁️ Pronto para iniciar um novo resgate');
             mudarAba('home');
