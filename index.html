@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Resgate</title>
+    <!-- Bibliotecas Necessárias -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -278,7 +279,7 @@
 
                 <div class="upload-wrapper">
                     <label for="excel-file" class="dashed-btn">
-                        <span>⊕</span> <text id="upload-text">Adicionar planilha de ganhos</text>
+                        <span>⊕</span> <span id="upload-text">Adicionar planilha de ganhos</span>
                     </label>
                     <input type="file" id="excel-file" accept=".xlsx, .xls, .xlsm" />
                 </div>
@@ -286,7 +287,7 @@
                 <!-- UPDATE DE LOCAÇÕES FIXAS -->
                 <div class="upload-wrapper" id="update-loc-wrapper" style="display:none; margin-top: 15px;">
                     <label for="excel-update-loc" class="dashed-btn" style="border-color: #ed8936; color: #dd6b20; background-color: #fffaf0;">
-                        <span>🔄</span> <text id="upload-update-text">Atualizar Locações Fixas (SKU x POSIÇÃO)</text>
+                        <span>🔄</span> <span id="upload-update-text">Atualizar Locações Fixas (SKU x POSIÇÃO)</span>
                     </label>
                     <input type="file" id="excel-update-loc" accept=".xlsx, .xls, .xlsm" />
                 </div>
@@ -414,16 +415,18 @@
         // ============================================================
         // BANCO DE DADOS ONLINE - SUPABASE
         // ============================================================
+        
+        // Aqui estão as suas credenciais ajustadas. A chave pública para Auth padrão do Supabase
+        // sempre será a 'Anon Key' que você enviou como 'Ano Public'. 
+        // A chave 'sb_publishable_...' não é o padrão nativo utilizado pela função createClient no JS.
         const SUPABASE_URL = 'https://crzrrhuhmspqeyttcquv.supabase.co';
-        const SUPABASE_PUBLISHABLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNyenJyaHVobXNwcWV5dHRjcXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5NjU1MzcsImV4cCI6MjEwMzU0MTUzN30.6bQwehSf_Fw6yptpbzWFQjQKRNo5dIVU5cl_MuK7prg';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNyenJyaHVobXNwcWV5dHRjcXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5NjU1MzcsImV4cCI6MjEwMzU0MTUzN30.6bQwehSf_Fw6yptpbzWFQjQKRNo5dIVU5cl_MuK7prg';
 
         let supabaseClient = null;
         const ID_ESTADO = 'principal';
 
         function bancoConfigurado() {
-            return SUPABASE_URL.startsWith('https://')
-                && !SUPABASE_URL.includes('COLE_AQUI')
-                && !SUPABASE_PUBLISHABLE_KEY.includes('COLE_AQUI');
+            return SUPABASE_URL.startsWith('https://') && !SUPABASE_ANON_KEY.includes('COLE_AQUI');
         }
 
         function iniciarBanco() {
@@ -431,7 +434,7 @@
             try {
                 supabaseClient = window.supabase.createClient(
                     SUPABASE_URL,
-                    SUPABASE_PUBLISHABLE_KEY
+                    SUPABASE_ANON_KEY
                 );
                 return true;
             } catch (erro) {
@@ -463,13 +466,16 @@
                         atualizado_em: new Date().toISOString()
                     });
 
-                if (error) throw error;
+                if (error) {
+                    console.error("Erro RLS/Banco:", error);
+                    throw error;
+                }
 
                 atualizarStatusNuvem('☁️ Salvo na nuvem');
                 return true;
             } catch (erro) {
                 console.error('Erro ao salvar no Supabase:', erro);
-                atualizarStatusNuvem('⚠️ Erro ao salvar');
+                atualizarStatusNuvem('⚠️ Erro ao salvar (Verifique RLS/Tabelas)');
                 return false;
             }
         }
@@ -515,7 +521,7 @@
                 return true;
             } catch (erro) {
                 console.error('Erro ao carregar dados do Supabase:', erro);
-                atualizarStatusNuvem('⚠️ Erro ao conectar ao banco');
+                atualizarStatusNuvem('⚠️ Erro ao conectar ao banco (Verifique RLS/Tabelas)');
                 return false;
             }
         }
@@ -1126,7 +1132,7 @@
                             <span class="destino-col-label" style="color: #d97706;">Loc. Fixa</span>
                             <span class="destino-copiavel" style="color: #d97706;">
                                 ${itemObj.locFixa} 
-                                ${window.modoHistorico ? '' : `<span class="edit-icon" onclick="editarLocFixa('${posicaoNome}', ${index})" title="Editar Locação Fixa">✏️</span>`}
+                                ${window.modoHistorico ? '' : `<span class="edit-icon" onclick="editarLocFixa('${posicaoNome}',${index})" title="Editar Locação Fixa">✏️</span>`}
                             </span>
                         </div>
                     `;
@@ -1146,7 +1152,7 @@
                                 <span class="destino-col-label">Destino</span>
                                 <span class="destino-copiavel">
                                     ${itemObj.destino}
-                                    ${window.modoHistorico ? '' : `<span class="edit-icon" onclick="editarDestino('${posicaoNome}', ${index})" title="Editar Destino">✏️</span>`}
+                                    ${window.modoHistorico ? '' : `<span class="edit-icon" onclick="editarDestino('${posicaoNome}',${index})" title="Editar Destino">✏️</span>`}
                                 </span>
                             </div>
                             ${htmlLocFixa}
@@ -1263,7 +1269,10 @@
                     dados: snapshot,
                     criado_em: new Date().toISOString()
                 });
-                if (error) throw error;
+                if (error) {
+                    console.error("Erro RLS/Banco (Histórico):", error);
+                    throw error;
+                }
 
                 await supabaseClient.from('sistema_resgate').delete().eq('id', ID_ESTADO);
                 window.dadosResgates = {};
@@ -1297,7 +1306,7 @@
                 }
                 container.innerHTML = `<div class="historico-lista">${data.map(h => `
                     <div class="historico-card">
-                        <div><h4>🗂️ ${h.nome}</h4><p>Arquivado em ${new Date(h.criado_em).toLocaleString('pt-BR')}</p></div>
+                        <div><h4>🗂️ ${h.nome}</h4><p>Arquivado em${new Date(h.criado_em).toLocaleString('pt-BR')}</p></div>
                         <div class="historico-acoes">
                             <button class="btn-historico btn-abrir-historico" onclick="abrirHistorico('${h.id}')">Abrir</button>
                             <button class="btn-historico btn-excluir-historico" onclick="excluirHistorico('${h.id}')">Excluir</button>
@@ -1305,7 +1314,7 @@
                     </div>`).join('')}</div>`;
             } catch (erro) {
                 console.error(erro);
-                container.innerHTML = '<div class="empty-dash">Erro ao carregar o histórico.</div>';
+                container.innerHTML = '<div class="empty-dash">Erro ao carregar o histórico. (Verifique suas regras RLS)</div>';
             }
         }
 
