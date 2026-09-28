@@ -155,16 +155,16 @@
         .dropdown-check-list::-webkit-scrollbar { width: 6px; }
         .busca-dropdown-input { width: 100%; padding: 8px; border: 1px solid #90cdf4; border-radius: 4px; outline: none; font-family: inherit; font-size: 0.85rem; }
 
-        .btn-selecionar-todos { background-color: #3182ce; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: background 0.2s; }
+        .btn-selecionar-todos { background-color: #3182ce; color: white; border: none; padding: 8px 13px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600; transition: background 0.2s; }
         .btn-selecionar-todos:hover { background-color: #2b6cb0; }
-        .btn-desfazer-todos { background-color: #718096; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: background 0.2s; }
+        .btn-desfazer-todos { background-color: #718096; color: white; border: none; padding: 8px 13px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600; transition: background 0.2s; }
         .btn-desfazer-todos:hover { background-color: #4a5568; }
 
         /* BOTÃO LIMPAR FILTROS DESTACADO */
         .btn-limpar-filtros { background-color: #fff; color: #d97706; border: 1px solid #d97706; padding: 8px 13px; border-radius: 7px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 0.82rem; transition: background 0.2s; }
         .btn-limpar-filtros:hover { background-color: #fef3c7; }
 
-        /* BOTÕES DE CÓPIA COLORIDOS */
+        /* BOTÕES DE CÓPIA E AÇÕES EM LOTE */
         .btn-copiar-destinos { background:#805ad5; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
         .btn-copiar-destinos:hover { background:#6b46c1; }
         .btn-copiar-loc { background:#ed8936; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
@@ -173,6 +173,11 @@
         .btn-copiar-sku:hover { background:#2f855a; }
         .btn-copiar-lote { background:#319795; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
         .btn-copiar-lote:hover { background:#2c7a7b; }
+
+        .btn-devolver-visiveis { background:#d97706; color:white; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
+        .btn-devolver-visiveis:hover { background:#b45309; }
+        .btn-desfazer-devolucao { background:#fde68a; color:#92400e; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
+        .btn-desfazer-devolucao:hover { background:#fcd34d; }
 
         .lista-itens { list-style: none; padding: 0; margin: 0; max-height: 500px; overflow-y: auto; padding-right: 5px;}
         .lista-itens::-webkit-scrollbar { width: 8px; }
@@ -213,8 +218,13 @@
         .btn-novo-resgate:hover { background:#c90000; }
         .modo-historico { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; padding:9px 12px; border-radius:7px; font-size:0.82rem; font-weight:700; margin-bottom:12px; }
 
+        /* Botões individuais do item */
         .btn-falta { background-color: #ffe5e5; color: #e60000; border: 1px solid #ffcccc; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;}
         .btn-falta:hover { background-color: #e60000; color: white; }
+
+        .btn-item-devolver { background-color: #edf2f7; color: #4a5568; border: 1px solid #cbd5e0; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-left: 5px;}
+        .btn-item-devolver:hover { background-color: #e2e8f0; }
+        .btn-item-devolver.ativo { background-color: #d97706; color: white; border-color: #b45309; }
 
         /* --- DASHBOARD --- */
         #view-dashboard { display: none; text-align: left; width: 100%; }
@@ -309,15 +319,6 @@
                         <span id="detalhes-stats" style="color: #718096; font-size: 0.9rem; font-weight: 600;"></span>
                     </div>
 
-                    <!-- CONTROLE DE DEVOLUÇÃO ESPECÍFICO POR POSIÇÃO -->
-                    <div id="controle-devolucao-posicao" style="margin-top: 5px; margin-bottom: 15px; display:flex; align-items:center; gap: 10px; background: #fff; padding: 10px 15px; border-radius: 8px; border: 1px solid #e2e8f0; width: fit-content;">
-                        <label style="font-weight: 700; color: #2d3748; font-size: 0.9rem;">Esta posição já foi devolvida?</label>
-                        <select id="select-devolvido-posicao" onchange="alterarStatusDevolucao()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e0; font-family: inherit; font-weight: 600; color: #4a5568; outline: none; cursor: pointer; font-size: 0.85rem;">
-                            <option value="Não">Não (Pendente)</option>
-                            <option value="Sim">Sim (Já devolvidos)</option>
-                        </select>
-                    </div>
-
                     <!-- Abas Pendentes / Resgatados -->
                     <div class="detalhes-tabs">
                         <button class="detalhes-tab-btn active" id="tab-pendentes" onclick="mudarAbaDetalhes('pendentes')">Pendentes (<span id="qtd-pendentes">0</span>)</button>
@@ -371,6 +372,8 @@
                             <button class="btn-copiar-loc" onclick="copiarLocFixaVisiveis()">📋 Copiar Loc. Fixas</button>
                             <button class="btn-copiar-lote" onclick="copiarLotesVisiveis()">📋 Copiar Lotes</button>
                             <button id="btn-acao-massa" class="btn-selecionar-todos" onclick="acaoTodosVisiveis()">☑ Selecionar Todos</button>
+                            <button class="btn-devolver-visiveis" onclick="marcarDevolvidosVisiveis(true)">📦 Devolver Visíveis</button>
+                            <button class="btn-desfazer-devolucao" onclick="marcarDevolvidosVisiveis(false)">Desfazer Devolução</button>
                         </div>
                     </div>
                 </div>
@@ -421,9 +424,6 @@
         window.modoHistorico = false;
         window.nomeHistoricoAtual = '';
         
-        // AGORA O STATUS DE DEVOLVIDO É UM OBJETO QUE GUARDA A RESPOSTA DE CADA POSIÇÃO
-        window.statusDevolvido = {}; 
-        
         let graficoItens = null;
         let graficoFinanceiro = null;
 
@@ -467,7 +467,6 @@
                     posicaoAtual: window.posicaoAtual,
                     planilhaCarregada: window.planilhaCarregada,
                     abaDetalhes: window.abaDetalhes,
-                    statusDevolvido: window.statusDevolvido, // Salvando o objeto de devolução
                     salvoEm: new Date().toISOString()
                 };
 
@@ -523,9 +522,6 @@
                 window.posicaoAtual = estado.posicaoAtual || '';
                 window.planilhaCarregada = estado.planilhaCarregada === true;
                 window.abaDetalhes = estado.abaDetalhes || 'pendentes';
-                
-                // Carregando o status por posição (se não existir, inicia vazio)
-                window.statusDevolvido = estado.statusDevolvido || {};
 
                 if (window.planilhaCarregada) {
                     document.getElementById('upload-text').innerText = "Atualizar planilha de ganhos";
@@ -564,7 +560,6 @@
                 window.abaDetalhes = 'pendentes';
                 window.modoHistorico = false;
                 window.nomeHistoricoAtual = '';
-                window.statusDevolvido = {}; // Limpando status individual
 
                 document.getElementById('view-detalhes').style.display = 'none';
                 document.getElementById('view-dashboard').style.display = 'none';
@@ -586,13 +581,6 @@
         function atualizarStatusNuvem(texto) {
             const el = document.getElementById('status-nuvem');
             if (el) el.innerText = texto;
-        }
-
-        // SALVA O STATUS ESPECÍFICO DA POSIÇÃO ATUAL
-        function alterarStatusDevolucao() {
-            if (window.modoHistorico) return;
-            window.statusDevolvido[window.posicaoAtual] = document.getElementById('select-devolvido-posicao').value;
-            salvarEstado();
         }
 
         function mudarAba(aba) {
@@ -718,10 +706,6 @@
             window.dadosResgates = {};
             mapeamentoColunas.forEach(pos => {
                 window.dadosResgates[pos.nome] = [];
-                // Se a posição ainda não tem um status definido, inicia como "Não"
-                if (!window.statusDevolvido[pos.nome]) {
-                    window.statusDevolvido[pos.nome] = 'Não';
-                }
             });
 
             for (let i = 2; i < linhas.length; i++) {
@@ -786,7 +770,8 @@
                                 validacao: validacao,
                                 indisponivel: false,
                                 locacaoAntiga: locacaoAntiga,
-                                numCaixa: numCaixa
+                                numCaixa: numCaixa,
+                                devolvido: false // NOVO: Campo de devolução por item
                             });
                         }
                     }
@@ -1055,10 +1040,6 @@
 
             window.posicaoAtual = posicaoNome;
             window.abaDetalhes = 'pendentes'; 
-            
-            // CARREGA O STATUS DE DEVOLUÇÃO DESSA POSIÇÃO
-            document.getElementById('select-devolvido-posicao').value = window.statusDevolvido[posicaoNome] || 'Não';
-            document.getElementById('select-devolvido-posicao').disabled = window.modoHistorico;
 
             document.getElementById('tab-pendentes').classList.add('active');
             document.getElementById('tab-resgatados').classList.remove('active');
@@ -1116,7 +1097,7 @@
         }
 
         // ==========================================
-        // OBTENÇÃO DE ITENS E AÇÕES EM MASSA (CÓPIAS E CHECKS)
+        // OBTENÇÃO DE ITENS E AÇÕES EM MASSA (CÓPIAS E CHECKS E DEVOLUÇÃO)
         // ==========================================
         function obterItensFiltrados() {
             const posicaoNome = window.posicaoAtual;
@@ -1167,6 +1148,9 @@
                 const somenteLeitura = window.modoHistorico ? 'disabled' : '';
                 const btnFalta = window.modoHistorico ? '' : `<button class="btn-falta" onclick="marcarIndisponivel('${posicaoNome}', ${index})" title="Remover item da lista">🚫 Falta</button>`;
                 
+                // NOVO: BOTÃO DE DEVOLUÇÃO INDIVIDUAL
+                const btnDevolver = window.modoHistorico ? '' : `<button class="btn-item-devolver ${itemObj.devolvido ? 'ativo' : ''}" onclick="alternarDevolucao('${posicaoNome}', ${index})" title="Marcar como devolvido">${itemObj.devolvido ? '📦 Devolvido' : '📦 Devolver'}</button>`;
+
                 let htmlLocFixa = '';
                 if (itemObj.locFixa) {
                     htmlLocFixa = `
@@ -1200,6 +1184,7 @@
                             ${htmlLocFixa}
                         </div>
                         <span class="badge-qtd">Qtd: ${itemObj.qtd}</span>
+                        ${btnDevolver}
                         ${btnFalta}
                     </li>`;
             });
@@ -1227,6 +1212,21 @@
             if (novoContainer) novoContainer.scrollTop = scrollPos;
         }
 
+        // NOVO: Função para alternar devolução individual
+        function alternarDevolucao(posicaoNome, index) {
+            if (window.modoHistorico) return;
+            const scrollContainer = document.querySelector('.lista-itens');
+            const scrollPos = scrollContainer ? scrollContainer.scrollTop : 0;
+
+            window.dadosResgates[posicaoNome][index].devolvido = !window.dadosResgates[posicaoNome][index].devolvido;
+            salvarEstado();
+            
+            renderizarListaItens(); 
+
+            const novoContainer = document.querySelector('.lista-itens');
+            if (novoContainer) novoContainer.scrollTop = scrollPos;
+        }
+
         function acaoTodosVisiveis() {
             if (window.modoHistorico) return;
             const itensVisiveis = obterItensFiltrados();
@@ -1238,6 +1238,24 @@
 
             salvarEstado();
             atualizarDropdowns();
+            renderizarListaItens();
+        }
+
+        // NOVO: Função para marcar devolução em lote (apenas nos itens visíveis do filtro)
+        function marcarDevolvidosVisiveis(status) {
+            if (window.modoHistorico) return;
+            const itensVisiveis = obterItensFiltrados();
+            
+            if (itensVisiveis.length === 0) {
+                alert("Nenhum item visível para atualizar o status de devolução.");
+                return;
+            }
+
+            itensVisiveis.forEach(itemObj => {
+                itemObj.devolvido = status;
+            });
+
+            salvarEstado();
             renderizarListaItens();
         }
 
@@ -1310,7 +1328,6 @@
                     planilhaCarregada: true,
                     abaDetalhes: 'pendentes',
                     nome: nome.trim(),
-                    statusDevolvido: window.statusDevolvido, // Guardar status individual no histórico
                     arquivadoEm: new Date().toISOString()
                 };
                 const { error } = await supabaseClient.from('resgate_historico').insert({
@@ -1329,7 +1346,6 @@
                 window.planilhaCarregada = false;
                 window.modoHistorico = false;
                 window.nomeHistoricoAtual = '';
-                window.statusDevolvido = {}; // Limpando status
                 
                 document.getElementById('excel-file').value = '';
                 document.getElementById('excel-update-loc').value = '';
@@ -1378,7 +1394,6 @@
                 window.posicaoAtual = '';
                 window.modoHistorico = true;
                 window.nomeHistoricoAtual = data.nome;
-                window.statusDevolvido = data.dados.statusDevolvido || {}; // Resgatar o status de devolução na época
                 document.getElementById('upload-text').innerText = 'Voltar ao histórico';
                 mudarAba('home');
                 renderizarPastas();
@@ -1400,7 +1415,6 @@
             window.planilhaCarregada = false;
             window.modoHistorico = false;
             window.nomeHistoricoAtual = '';
-            window.statusDevolvido = {};
             
             document.getElementById('excel-file').value = '';
             document.getElementById('excel-update-loc').value = '';
@@ -1590,12 +1604,13 @@
             
             mapeamentoColunas.forEach(pos => {
                 const itens = window.dadosResgates[pos.nome];
-                // Checa a resposta salva para esta posição no objeto. Se não tiver nada, é "Não".
-                const statusPosicao = window.statusDevolvido[pos.nome] || 'Não'; 
-                const txtDevolvido = statusPosicao === 'Sim' ? 'Já Devolvido' : 'Não Devolvido';
 
                 itens.forEach(item => {
                     rowIndex++;
+                    
+                    // Checa se o item (linha) específico foi marcado como devolvido no sistema
+                    const txtDevolvido = item.devolvido ? 'Já Devolvido' : 'Não Devolvido';
+
                     if (item.indisponivel) {
                         linhasVermelhas.push(rowIndex);
                         dadosExportacao.push({
@@ -1610,7 +1625,7 @@
                             "VALIDAÇÃO QUALIDADE GB": item.validacao,
                             "VALOR": formatarMoeda(item.valorTotal), 
                             "STATUS (NO SISTEMA)": "Indisponível / Falta",
-                            "JÁ DEVOLVIDO?": txtDevolvido // Usa o texto baseado na resposta para essa posição
+                            "JÁ DEVOLVIDO?": txtDevolvido // Usa o novo formato individual
                         });
                     } else {
                         dadosExportacao.push({
@@ -1625,7 +1640,7 @@
                             "VALIDAÇÃO QUALIDADE GB": item.validacao,
                             "VALOR": formatarMoeda(item.valorTotal), 
                             "STATUS (NO SISTEMA)": item.checado ? "Concluído" : "Pendente",
-                            "JÁ DEVOLVIDO?": txtDevolvido // Usa o texto baseado na resposta para essa posição
+                            "JÁ DEVOLVIDO?": txtDevolvido // Usa o novo formato individual
                         });
                     }
                 });
