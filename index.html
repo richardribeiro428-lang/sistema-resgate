@@ -364,6 +364,16 @@
                                 </div>
                             </div>
 
+                            <!-- Filtro de Devolução (NOVO) -->
+                            <div class="filtro-item">
+                                <label>Devolução:</label>
+                                <select id="filtro-devolucao" onchange="aoMudarFiltro()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #90cdf4; background: #fff; color: #2c5282; font-weight: 600; font-size: 0.85rem; outline: none; cursor: pointer; min-width: 170px;">
+                                    <option value="Todos">Todas</option>
+                                    <option value="Sim">Já Devolvidas</option>
+                                    <option value="Nao">Não Devolvidas</option>
+                                </select>
+                            </div>
+
                         </div>
                         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top: 10px;">
                             <button class="btn-limpar-filtros" onclick="limparFiltros()">🧹 Limpar Filtros</button>
@@ -771,7 +781,7 @@
                                 indisponivel: false,
                                 locacaoAntiga: locacaoAntiga,
                                 numCaixa: numCaixa,
-                                devolvido: false // NOVO: Campo de devolução por item
+                                devolvido: false
                             });
                         }
                     }
@@ -898,6 +908,7 @@
             const skusSel = getSelecionados('.chk-sku');
             const valsSel = getSelecionados('.chk-validacao');
             const destsSel = getSelecionados('.chk-destino');
+            const filtroDevolucao = document.getElementById('filtro-devolucao').value; // Filtro de devolução atual
 
             const itens = window.dadosResgates[posicaoNome];
             
@@ -905,6 +916,8 @@
                 if (itemObj.indisponivel) return false;
                 if (window.abaDetalhes === 'pendentes' && itemObj.checado) return false;
                 if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return false;
+                if (filtroDevolucao === 'Sim' && !itemObj.devolvido) return false;
+                if (filtroDevolucao === 'Nao' && itemObj.devolvido) return false;
                 return true;
             });
 
@@ -938,6 +951,7 @@
             const skusSel = getSelecionados('.chk-sku');
             const valsSel = getSelecionados('.chk-validacao');
             const destsSel = getSelecionados('.chk-destino');
+            const filtroDevolucao = document.getElementById('filtro-devolucao').value; // Filtro de devolução atual
 
             const itens = window.dadosResgates[posicaoNome];
             
@@ -945,6 +959,8 @@
                 if (itemObj.indisponivel) return false;
                 if (window.abaDetalhes === 'pendentes' && itemObj.checado) return false;
                 if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return false;
+                if (filtroDevolucao === 'Sim' && !itemObj.devolvido) return false;
+                if (filtroDevolucao === 'Nao' && itemObj.devolvido) return false;
                 return true;
             });
 
@@ -1013,6 +1029,9 @@
             const checkboxes = document.querySelectorAll('.chk-sku, .chk-validacao, .chk-destino');
             checkboxes.forEach(chk => chk.checked = false);
             
+            const selectDev = document.getElementById('filtro-devolucao');
+            if(selectDev) selectDev.value = 'Todos';
+
             atualizarLabelsFiltros();
             atualizarVisibilidadeDropdowns(); 
             
@@ -1104,6 +1123,7 @@
             const skusSel = getSelecionados('.chk-sku');
             const valsSel = getSelecionados('.chk-validacao');
             const destsSel = getSelecionados('.chk-destino');
+            const filtroDevolucao = document.getElementById('filtro-devolucao').value; // Filtro de devolução atual
 
             const itens = window.dadosResgates[posicaoNome] || [];
             return itens.filter(itemObj => {
@@ -1113,6 +1133,8 @@
                 if (skusSel.length > 0 && !skusSel.includes(itemObj.item)) return false;
                 if (valsSel.length > 0 && !valsSel.includes(itemObj.validacao)) return false;
                 if (destsSel.length > 0 && !destsSel.includes(itemObj.destino)) return false;
+                if (filtroDevolucao === 'Sim' && !itemObj.devolvido) return false;
+                if (filtroDevolucao === 'Nao' && itemObj.devolvido) return false;
                 return true;
             });
         }
@@ -1128,7 +1150,7 @@
             let countPendentes = 0;
             let countResgatados = 0;
 
-            // Para os contadores de aba, contamos todos (sem filtro de validação/sku/destino)
+            // Para os contadores de aba, contamos todos (sem filtro de validação/sku/destino/devolução)
             todosItens.forEach(i => {
                 if (!i.indisponivel) {
                     if (i.checado) countResgatados++;
@@ -1148,7 +1170,7 @@
                 const somenteLeitura = window.modoHistorico ? 'disabled' : '';
                 const btnFalta = window.modoHistorico ? '' : `<button class="btn-falta" onclick="marcarIndisponivel('${posicaoNome}', ${index})" title="Remover item da lista">🚫 Falta</button>`;
                 
-                // NOVO: BOTÃO DE DEVOLUÇÃO INDIVIDUAL
+                // BOTÃO DE DEVOLUÇÃO INDIVIDUAL
                 const btnDevolver = window.modoHistorico ? '' : `<button class="btn-item-devolver ${itemObj.devolvido ? 'ativo' : ''}" onclick="alternarDevolucao('${posicaoNome}', ${index})" title="Marcar como devolvido">${itemObj.devolvido ? '📦 Devolvido' : '📦 Devolver'}</button>`;
 
                 let htmlLocFixa = '';
@@ -1212,7 +1234,6 @@
             if (novoContainer) novoContainer.scrollTop = scrollPos;
         }
 
-        // NOVO: Função para alternar devolução individual
         function alternarDevolucao(posicaoNome, index) {
             if (window.modoHistorico) return;
             const scrollContainer = document.querySelector('.lista-itens');
@@ -1221,6 +1242,8 @@
             window.dadosResgates[posicaoNome][index].devolvido = !window.dadosResgates[posicaoNome][index].devolvido;
             salvarEstado();
             
+            // Atualiza os dropdowns caso a exclusão no filtro faça o item sumir
+            atualizarDropdowns();
             renderizarListaItens(); 
 
             const novoContainer = document.querySelector('.lista-itens');
@@ -1241,7 +1264,6 @@
             renderizarListaItens();
         }
 
-        // NOVO: Função para marcar devolução em lote (apenas nos itens visíveis do filtro)
         function marcarDevolvidosVisiveis(status) {
             if (window.modoHistorico) return;
             const itensVisiveis = obterItensFiltrados();
@@ -1256,6 +1278,7 @@
             });
 
             salvarEstado();
+            atualizarDropdowns();
             renderizarListaItens();
         }
 
@@ -1625,7 +1648,7 @@
                             "VALIDAÇÃO QUALIDADE GB": item.validacao,
                             "VALOR": formatarMoeda(item.valorTotal), 
                             "STATUS (NO SISTEMA)": "Indisponível / Falta",
-                            "JÁ DEVOLVIDO?": txtDevolvido // Usa o novo formato individual
+                            "JÁ DEVOLVIDO?": txtDevolvido 
                         });
                     } else {
                         dadosExportacao.push({
@@ -1640,7 +1663,7 @@
                             "VALIDAÇÃO QUALIDADE GB": item.validacao,
                             "VALOR": formatarMoeda(item.valorTotal), 
                             "STATUS (NO SISTEMA)": item.checado ? "Concluído" : "Pendente",
-                            "JÁ DEVOLVIDO?": txtDevolvido // Usa o novo formato individual
+                            "JÁ DEVOLVIDO?": txtDevolvido 
                         });
                     }
                 });
