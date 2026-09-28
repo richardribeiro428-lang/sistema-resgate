@@ -416,9 +416,6 @@
         // BANCO DE DADOS ONLINE - SUPABASE
         // ============================================================
         
-        // Aqui estão as suas credenciais ajustadas. A chave pública para Auth padrão do Supabase
-        // sempre será a 'Anon Key' que você enviou como 'Ano Public'. 
-        // A chave 'sb_publishable_...' não é o padrão nativo utilizado pela função createClient no JS.
         const SUPABASE_URL = 'https://crzrrhuhmspqeyttcquv.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNyenJyaHVobXNwcWV5dHRjcXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5NjU1MzcsImV4cCI6MjEwMzU0MTUzN30.6bQwehSf_Fw6yptpbzWFQjQKRNo5dIVU5cl_MuK7prg';
 
@@ -705,6 +702,10 @@
                 const lote = String(linha[5] || '-').trim();
                 const destino = String(linha[11] || 'ND').trim();
                 const validacao = String(linha[39] || '#N/D').trim();
+                
+                // --- NOVOS CAMPOS LIDOS DO EXCEL ---
+                const locacaoAntiga = String(linha[2] || '-').trim();
+                const numCaixa = String(linha[8] || '-').trim();
 
                 let locFixa = "";
                 const valUpper = validacao.toUpperCase();
@@ -723,7 +724,10 @@
                         let valorTotal = parseFloat(linha[pos.indexValor]);
                         if (isNaN(valorTotal)) valorTotal = 0;
 
-                        const chaveUnica = `${item.toUpperCase()}|${destino.toUpperCase()}|${validacao.toUpperCase()}`;
+                        // --- NOVA REGRA PARA NÃO JUNTAR CAIXAS OU LOCAÇÕES DIFERENTES ---
+                        // A chave única garante que linhas com N° CX ou LOCAÇÃO ANTIGA diferentes não se misturem!
+                        const chaveUnica = `${item.toUpperCase()}|${destino.toUpperCase()}|${validacao.toUpperCase()}|${locacaoAntiga.toUpperCase()}|${numCaixa.toUpperCase()}`;
+                        
                         const itemExistente = window.dadosResgates[pos.nome].find(i => i.chaveUnica === chaveUnica);
 
                         if (itemExistente) {
@@ -750,7 +754,10 @@
                                 valorTotal: valorTotal,
                                 checado: false,
                                 validacao: validacao,
-                                indisponivel: false
+                                indisponivel: false,
+                                // --- GRAVANDO OS NOVOS CAMPOS NO SISTEMA ---
+                                locacaoAntiga: locacaoAntiga,
+                                numCaixa: numCaixa
                             });
                         }
                     }
@@ -1526,6 +1533,9 @@
             await carregarEstadoSalvo();
         });
 
+        // ==========================================
+        // EXPORTAÇÃO EXCEL COM AS NOVAS COLUNAS
+        // ==========================================
         function exportarExcel() {
             const dadosExportacao = [];
             const linhasVermelhas = [];
@@ -1538,19 +1548,33 @@
                     if (item.indisponivel) {
                         linhasVermelhas.push(rowIndex);
                         dadosExportacao.push({
-                            "SKU": item.item, "QUANTIDADE RESGATADA": item.qtd, "QUAL RESGATE": pos.nome,
-                            "LOTE": item.lote, "DESTINO": item.destino, 
+                            "SKU": item.item, 
+                            "QUANTIDADE RESGATADA": item.qtd, 
+                            "QUAL RESGATE": pos.nome,
+                            "LOTE": item.lote, 
+                            "DESTINO": item.destino, 
                             "LOC. FIXA": item.locFixa ? item.locFixa : "-", 
+                            // --- NOVAS COLUNAS ---
+                            "LOCAÇÃO ANTIGA": item.locacaoAntiga,
+                            "N° CX": item.numCaixa,
                             "VALIDAÇÃO QUALIDADE GB": item.validacao,
-                            "VALOR": formatarMoeda(item.valorTotal), "STATUS (NO SISTEMA)": "Indisponível / Falta"
+                            "VALOR": formatarMoeda(item.valorTotal), 
+                            "STATUS (NO SISTEMA)": "Indisponível / Falta"
                         });
                     } else {
                         dadosExportacao.push({
-                            "SKU": item.item, "QUANTIDADE RESGATADA": item.qtd, "QUAL RESGATE": pos.nome,
-                            "LOTE": item.lote, "DESTINO": item.destino, 
+                            "SKU": item.item, 
+                            "QUANTIDADE RESGATADA": item.qtd, 
+                            "QUAL RESGATE": pos.nome,
+                            "LOTE": item.lote, 
+                            "DESTINO": item.destino, 
                             "LOC. FIXA": item.locFixa ? item.locFixa : "-", 
+                            // --- NOVAS COLUNAS ---
+                            "LOCAÇÃO ANTIGA": item.locacaoAntiga,
+                            "N° CX": item.numCaixa,
                             "VALIDAÇÃO QUALIDADE GB": item.validacao,
-                            "VALOR": formatarMoeda(item.valorTotal), "STATUS (NO SISTEMA)": item.checado ? "Concluído" : "Pendente"
+                            "VALOR": formatarMoeda(item.valorTotal), 
+                            "STATUS (NO SISTEMA)": item.checado ? "Concluído" : "Pendente"
                         });
                     }
                 });
