@@ -171,6 +171,8 @@
         .btn-copiar-loc:hover { background:#dd6b20; }
         .btn-copiar-sku { background:#38a169; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
         .btn-copiar-sku:hover { background:#2f855a; }
+        .btn-copiar-lote { background:#319795; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
+        .btn-copiar-lote:hover { background:#2c7a7b; }
 
         .lista-itens { list-style: none; padding: 0; margin: 0; max-height: 500px; overflow-y: auto; padding-right: 5px;}
         .lista-itens::-webkit-scrollbar { width: 8px; }
@@ -274,6 +276,15 @@
 
                 <div class="grid-posicoes" id="view-posicoes"></div>
 
+                <!-- CONTROLE DE DEVOLUÇÃO -->
+                <div id="controle-devolucao" style="display:none; margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; text-align: center;">
+                    <label style="font-weight: 700; color: #2d3748; margin-right: 10px;">Os itens já foram devolvidos?</label>
+                    <select id="select-devolvido" onchange="alterarStatusDevolucao()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e0; font-family: inherit; font-weight: 600; color: #4a5568; outline: none; cursor: pointer;">
+                        <option value="Não">Não (Pendente)</option>
+                        <option value="Sim">Sim (Já devolvidos)</option>
+                    </select>
+                </div>
+
                 <button class="btn-exportar" id="btn-exportar" onclick="exportarExcel()">📥 Exportar Relação de Resgates (Excel)</button>
                 <button class="btn-arquivar" id="btn-arquivar" onclick="arquivarResgate()" style="display:none;">🗄️ Finalizar e arquivar resgate</button>
 
@@ -358,6 +369,7 @@
                             <button class="btn-copiar-sku" onclick="copiarSKUsVisiveis()">📋 Copiar SKUs</button>
                             <button class="btn-copiar-destinos" onclick="copiarDestinosVisiveis()">📋 Copiar Destinos</button>
                             <button class="btn-copiar-loc" onclick="copiarLocFixaVisiveis()">📋 Copiar Loc. Fixas</button>
+                            <button class="btn-copiar-lote" onclick="copiarLotesVisiveis()">📋 Copiar Lotes</button>
                             <button id="btn-acao-massa" class="btn-selecionar-todos" onclick="acaoTodosVisiveis()">☑ Selecionar Todos</button>
                         </div>
                     </div>
@@ -408,6 +420,7 @@
         window.abaDetalhes = 'pendentes';
         window.modoHistorico = false;
         window.nomeHistoricoAtual = '';
+        window.statusDevolvido = 'Não'; // Estado global de devolução
         
         let graficoItens = null;
         let graficoFinanceiro = null;
@@ -452,6 +465,7 @@
                     posicaoAtual: window.posicaoAtual,
                     planilhaCarregada: window.planilhaCarregada,
                     abaDetalhes: window.abaDetalhes,
+                    statusDevolvido: window.statusDevolvido, // Salvando opção de devolução
                     salvoEm: new Date().toISOString()
                 };
 
@@ -507,6 +521,9 @@
                 window.posicaoAtual = estado.posicaoAtual || '';
                 window.planilhaCarregada = estado.planilhaCarregada === true;
                 window.abaDetalhes = estado.abaDetalhes || 'pendentes';
+                window.statusDevolvido = estado.statusDevolvido || 'Não'; // Carregando o status
+                
+                document.getElementById('select-devolvido').value = window.statusDevolvido;
 
                 if (window.planilhaCarregada) {
                     document.getElementById('upload-text').innerText = "Atualizar planilha de ganhos";
@@ -545,6 +562,8 @@
                 window.abaDetalhes = 'pendentes';
                 window.modoHistorico = false;
                 window.nomeHistoricoAtual = '';
+                window.statusDevolvido = 'Não';
+                document.getElementById('select-devolvido').value = 'Não';
 
                 document.getElementById('view-detalhes').style.display = 'none';
                 document.getElementById('view-dashboard').style.display = 'none';
@@ -552,6 +571,7 @@
                 document.getElementById('view-posicoes').innerHTML = '';
                 document.getElementById('btn-exportar').style.display = 'none';
                 document.getElementById('update-loc-wrapper').style.display = 'none';
+                document.getElementById('controle-devolucao').style.display = 'none';
                 document.getElementById('upload-text').innerText = "Adicionar planilha de ganhos";
                 document.getElementById('subtitle-text').innerText = "Faça o upload da planilha para carregar os locais de resgate.";
 
@@ -566,6 +586,11 @@
         function atualizarStatusNuvem(texto) {
             const el = document.getElementById('status-nuvem');
             if (el) el.innerText = texto;
+        }
+
+        function alterarStatusDevolucao() {
+            window.statusDevolvido = document.getElementById('select-devolvido').value;
+            salvarEstado();
         }
 
         function mudarAba(aba) {
@@ -724,7 +749,6 @@
                         let valorTotal = parseFloat(linha[pos.indexValor]);
                         if (isNaN(valorTotal)) valorTotal = 0;
 
-                        // --- NOVA REGRA PARA NÃO JUNTAR CAIXAS OU LOCAÇÕES DIFERENTES ---
                         // A chave única garante que linhas com N° CX ou LOCAÇÃO ANTIGA diferentes não se misturem!
                         const chaveUnica = `${item.toUpperCase()}|${destino.toUpperCase()}|${validacao.toUpperCase()}|${locacaoAntiga.toUpperCase()}|${numCaixa.toUpperCase()}`;
                         
@@ -755,7 +779,6 @@
                                 checado: false,
                                 validacao: validacao,
                                 indisponivel: false,
-                                // --- GRAVANDO OS NOVOS CAMPOS NO SISTEMA ---
                                 locacaoAntiga: locacaoAntiga,
                                 numCaixa: numCaixa
                             });
@@ -798,10 +821,13 @@
             const btnNovo = document.getElementById('btn-novo-resgate');
             const btnArquivar = document.getElementById('btn-arquivar');
             const btnUpdateLoc = document.getElementById('update-loc-wrapper');
+            const ctrlDevolucao = document.getElementById('controle-devolucao');
 
             btnNovo.style.display = window.modoHistorico ? 'block' : 'none';
             btnArquivar.style.display = (window.planilhaCarregada && !window.modoHistorico) ? 'block' : 'none';
+            
             if (btnUpdateLoc) btnUpdateLoc.style.display = (window.planilhaCarregada && !window.modoHistorico) ? 'block' : 'none';
+            if (ctrlDevolucao) ctrlDevolucao.style.display = (window.planilhaCarregada && !window.modoHistorico) ? 'block' : 'none';
             
             if (window.modoHistorico) {
                 document.getElementById('subtitle-text').innerText = `Visualização do histórico: ${window.nomeHistoricoAtual}`;
@@ -1254,6 +1280,12 @@
             copiarTexto(skus.join('\n'), `${skus.length} SKU(s) copiado(s).`);
         }
 
+        async function copiarLotesVisiveis() {
+            const lotes = obterItensFiltrados().map(i => i.lote).filter(l => l && l !== '-');
+            if (!lotes.length) { alert('Nenhum lote visível para copiar.'); return; }
+            copiarTexto(lotes.join('\n'), `${lotes.length} lote(s) copiado(s).`);
+        }
+
 
         // ==========================================
         // ARQUIVAMENTO E HISTÓRICO
@@ -1269,6 +1301,7 @@
                     planilhaCarregada: true,
                     abaDetalhes: 'pendentes',
                     nome: nome.trim(),
+                    statusDevolvido: window.statusDevolvido, // Guardar status no histórico
                     arquivadoEm: new Date().toISOString()
                 };
                 const { error } = await supabaseClient.from('resgate_historico').insert({
@@ -1287,6 +1320,8 @@
                 window.planilhaCarregada = false;
                 window.modoHistorico = false;
                 window.nomeHistoricoAtual = '';
+                window.statusDevolvido = 'Não';
+                document.getElementById('select-devolvido').value = 'Não';
                 document.getElementById('excel-file').value = '';
                 document.getElementById('excel-update-loc').value = '';
                 document.getElementById('upload-text').innerText = 'Adicionar planilha de ganhos';
@@ -1334,6 +1369,7 @@
                 window.posicaoAtual = '';
                 window.modoHistorico = true;
                 window.nomeHistoricoAtual = data.nome;
+                window.statusDevolvido = data.dados.statusDevolvido || 'Não'; // Resgatar o status de devolução na época
                 document.getElementById('upload-text').innerText = 'Voltar ao histórico';
                 mudarAba('home');
                 renderizarPastas();
@@ -1355,6 +1391,8 @@
             window.planilhaCarregada = false;
             window.modoHistorico = false;
             window.nomeHistoricoAtual = '';
+            window.statusDevolvido = 'Não';
+            document.getElementById('select-devolvido').value = 'Não';
             document.getElementById('excel-file').value = '';
             document.getElementById('excel-update-loc').value = '';
             document.getElementById('upload-text').innerText = 'Adicionar planilha de ganhos';
@@ -1363,6 +1401,7 @@
             document.getElementById('btn-exportar').style.display = 'none';
             document.getElementById('btn-arquivar').style.display = 'none';
             document.getElementById('update-loc-wrapper').style.display = 'none';
+            document.getElementById('controle-devolucao').style.display = 'none';
             document.getElementById('btn-novo-resgate').style.display = 'none';
             atualizarStatusNuvem('☁️ Pronto para iniciar um novo resgate');
             mudarAba('home');
@@ -1540,6 +1579,9 @@
             const dadosExportacao = [];
             const linhasVermelhas = [];
             let rowIndex = 0; 
+            
+            // Texto formatado de devolução para colocar na tabela Excel
+            const txtDevolvido = window.statusDevolvido === 'Sim' ? 'Já Devolvido' : 'Não Devolvido';
 
             mapeamentoColunas.forEach(pos => {
                 const itens = window.dadosResgates[pos.nome];
@@ -1554,12 +1596,12 @@
                             "LOTE": item.lote, 
                             "DESTINO": item.destino, 
                             "LOC. FIXA": item.locFixa ? item.locFixa : "-", 
-                            // --- NOVAS COLUNAS ---
                             "LOCAÇÃO ANTIGA": item.locacaoAntiga,
                             "N° CX": item.numCaixa,
                             "VALIDAÇÃO QUALIDADE GB": item.validacao,
                             "VALOR": formatarMoeda(item.valorTotal), 
-                            "STATUS (NO SISTEMA)": "Indisponível / Falta"
+                            "STATUS (NO SISTEMA)": "Indisponível / Falta",
+                            "JÁ DEVOLVIDO?": txtDevolvido // Nova Coluna
                         });
                     } else {
                         dadosExportacao.push({
@@ -1569,12 +1611,12 @@
                             "LOTE": item.lote, 
                             "DESTINO": item.destino, 
                             "LOC. FIXA": item.locFixa ? item.locFixa : "-", 
-                            // --- NOVAS COLUNAS ---
                             "LOCAÇÃO ANTIGA": item.locacaoAntiga,
                             "N° CX": item.numCaixa,
                             "VALIDAÇÃO QUALIDADE GB": item.validacao,
                             "VALOR": formatarMoeda(item.valorTotal), 
-                            "STATUS (NO SISTEMA)": item.checado ? "Concluído" : "Pendente"
+                            "STATUS (NO SISTEMA)": item.checado ? "Concluído" : "Pendente",
+                            "JÁ DEVOLVIDO?": txtDevolvido // Nova Coluna
                         });
                     }
                 });
