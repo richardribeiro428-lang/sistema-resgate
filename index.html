@@ -179,6 +179,7 @@
         .btn-desfazer-devolucao { background:#fde68a; color:#92400e; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
         .btn-desfazer-devolucao:hover { background:#fcd34d; }
         
+        /* NOVO BOTÃO DE EXPORTAR SETOR */
         .btn-exportar-setor { background:#0ea5e9; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
         .btn-exportar-setor:hover { background:#0284c7; }
 
@@ -248,6 +249,7 @@
         .prog-bg { flex-grow: 1; height: 8px; background-color: rgba(255,255,255,0.3); border-radius: 4px; overflow: hidden; }
         .prog-fill { height: 100%; background-color: #00ff66; transition: width 0.3s; }
         
+        /* GRÁFICOS GRANDES E VERTICAIS */
         .charts-wrapper { display: none; flex-direction: column; gap: 30px; width: 100%; padding-bottom: 30px; }
         .chart-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; width: 100%; display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02);}
         .chart-box h4 { margin: 0 0 15px 0; color: #2d3748; font-size: 1.2rem; }
@@ -1400,7 +1402,7 @@
                 }
                 container.innerHTML = `<div class="historico-lista">${data.map(h => `
                     <div class="historico-card">
-                        <div><h4>🗂️ ${h.nome}</h4><p>Arquivado em${new Date(h.criado_em).toLocaleString('pt-BR')}</p></div>
+                        <div><h4>🗂️ ${h.nome}</h4><p>Arquivado em ${new Date(h.criado_em).toLocaleString('pt-BR')}</p></div>
                         <div class="historico-acoes">
                             <button class="btn-historico btn-abrir-historico" onclick="abrirHistorico('${h.id}')">Abrir</button>
                             <button class="btn-historico btn-excluir-historico" onclick="excluirHistorico('${h.id}')">Excluir</button>
@@ -1666,14 +1668,27 @@
         });
 
         // ==========================================
-        // EXPORTAÇÕES EXCEL
+        // EXPORTAÇÕES EXCEL (Com formatações corrigidas)
         // ==========================================
         
+        // Função para transformar strings puramente numéricas em números de verdade para o Excel
+        function tratarDadoNumerico(valor) {
+            if (typeof valor === 'string') {
+                const limpo = valor.trim();
+                if (limpo === '' || limpo === '-') return limpo;
+                // Se for composto apenas por números, transforma em Inteiro
+                if (/^\d+$/.test(limpo)) {
+                    return Number(limpo);
+                }
+            }
+            return valor;
+        }
+
         // EXPORTAÇÃO GLOBAL DE TODOS OS SETORES
         function exportarExcel() {
             const dadosExportacao = [];
             const linhasVermelhas = [];
-            let rowIndex = 0; 
+            let rowIndex = 0; // Header é a linha 0
             
             mapeamentoColunas.forEach(pos => {
                 const itens = window.dadosResgates[pos.nome];
@@ -1681,17 +1696,19 @@
                 itens.forEach(item => {
                     rowIndex++;
                     const txtDevolvido = item.devolvido ? 'Já Devolvido' : 'Não Devolvido';
+                    
+                    // A ordem das chaves neste objeto dita a ordem exata das colunas no Excel gerado
                     const linhaObj = {
-                        "SKU": item.item, 
-                        "QUANTIDADE RESGATADA": item.qtd, 
-                        "QUAL RESGATE": pos.nome,
-                        "LOTE": item.lote, 
-                        "DESTINO": item.destino, 
-                        "LOC. FIXA": item.locFixa ? item.locFixa : "-", 
                         "LOCAÇÃO ANTIGA": item.locacaoAntiga,
-                        "N° CX": item.numCaixa,
+                        "SKU": tratarDadoNumerico(item.item),
+                        "QUANTIDADE RESGATADA": item.qtd,
+                        "LOTE": item.lote,
+                        "N° CX": tratarDadoNumerico(item.numCaixa),
+                        "DESTINO": item.destino,
+                        "QUAL RESGATE": pos.nome,
+                        "LOC. FIXA": item.locFixa ? item.locFixa : "-",
                         "VALIDAÇÃO QUALIDADE GB": item.validacao,
-                        "VALOR": formatarMoeda(item.valorTotal), 
+                        "VALOR": item.valorTotal, // MANDAMOS O NÚMERO CRU AQUI (para formatar depois)
                         "STATUS (NO SISTEMA)": item.indisponivel ? "Indisponível / Falta" : (item.checado ? "Concluído" : "Pendente"),
                         "JÁ DEVOLVIDO?": txtDevolvido 
                     };
@@ -1703,14 +1720,29 @@
 
             const worksheet = XLSX.utils.json_to_sheet(dadosExportacao);
             const range = XLSX.utils.decode_range(worksheet['!ref']);
-            for(let row of linhasVermelhas) {
-                for(let col = range.s.c; col <= range.e.c; col++) {
-                    const cellAddress = XLSX.utils.encode_cell({r: row, c: col});
-                    if(!worksheet[cellAddress]) continue;
-                    worksheet[cellAddress].s = {
-                        fill: { fgColor: { rgb: "FFFF0000" } }, 
-                        font: { color: { rgb: "FFFFFFFF" }, bold: true } 
-                    };
+            
+            // Loop para aplicar as formatações em cada célula
+            for(let R = range.s.r; R <= range.e.r; R++) {
+                // APLICANDO MOEDA: Ignora o cabeçalho (R=0) e formata a coluna 'VALOR' (que agora é a coluna J, índice 9)
+                if (R > 0) {
+                    const cellValor = worksheet[XLSX.utils.encode_cell({r: R, c: 9})];
+                    if(cellValor) {
+                        cellValor.t = 'n'; // Garante que é tratado como número
+                        cellValor.z = '"R$ "#,##0.00'; // Formato de Real (R$) do Excel
+                    }
+                }
+
+                // APLICANDO COR VERMELHA para indisponíveis
+                if (linhasVermelhas.includes(R)) {
+                    for(let C = range.s.c; C <= range.e.c; C++) {
+                        const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
+                        if(!worksheet[cellAddress]) continue;
+                        
+                        worksheet[cellAddress].s = {
+                            fill: { fgColor: { rgb: "FFFF0000" } }, 
+                            font: { color: { rgb: "FFFFFFFF" }, bold: true } 
+                        };
+                    }
                 }
             }
 
@@ -1737,45 +1769,53 @@
             itens.forEach(item => {
                 rowIndex++;
                 const txtDevolvido = item.devolvido ? 'Já Devolvido' : 'Não Devolvido';
+                
                 const linhaObj = {
-                    "SKU": item.item, 
-                    "QUANTIDADE RESGATADA": item.qtd, 
-                    "QUAL RESGATE": posicao,
-                    "LOTE": item.lote, 
-                    "DESTINO": item.destino, 
-                    "LOC. FIXA": item.locFixa ? item.locFixa : "-", 
                     "LOCAÇÃO ANTIGA": item.locacaoAntiga,
-                    "N° CX": item.numCaixa,
+                    "SKU": tratarDadoNumerico(item.item),
+                    "QUANTIDADE RESGATADA": item.qtd,
+                    "LOTE": item.lote,
+                    "N° CX": tratarDadoNumerico(item.numCaixa),
+                    "DESTINO": item.destino,
+                    "QUAL RESGATE": posicao,
+                    "LOC. FIXA": item.locFixa ? item.locFixa : "-",
                     "VALIDAÇÃO QUALIDADE GB": item.validacao,
-                    "VALOR": formatarMoeda(item.valorTotal), 
+                    "VALOR": item.valorTotal, 
                     "STATUS (NO SISTEMA)": item.indisponivel ? "Indisponível / Falta" : (item.checado ? "Concluído" : "Pendente"),
                     "JÁ DEVOLVIDO?": txtDevolvido 
                 };
                 
                 dadosExportacao.push(linhaObj);
                 
-                if (item.indisponivel) {
-                    linhasVermelhas.push(rowIndex);
-                }
+                if (item.indisponivel) linhasVermelhas.push(rowIndex);
             });
 
             const worksheet = XLSX.utils.json_to_sheet(dadosExportacao);
-            
             const range = XLSX.utils.decode_range(worksheet['!ref']);
-            for(let row of linhasVermelhas) {
-                for(let col = range.s.c; col <= range.e.c; col++) {
-                    const cellAddress = XLSX.utils.encode_cell({r: row, c: col});
-                    if(!worksheet[cellAddress]) continue;
-                    worksheet[cellAddress].s = {
-                        fill: { fgColor: { rgb: "FFFF0000" } }, 
-                        font: { color: { rgb: "FFFFFFFF" }, bold: true } 
-                    };
+            
+            for(let R = range.s.r; R <= range.e.r; R++) {
+                if (R > 0) {
+                    const cellValor = worksheet[XLSX.utils.encode_cell({r: R, c: 9})];
+                    if(cellValor) {
+                        cellValor.t = 'n'; 
+                        cellValor.z = '"R$ "#,##0.00'; 
+                    }
+                }
+
+                if (linhasVermelhas.includes(R)) {
+                    for(let C = range.s.c; C <= range.e.c; C++) {
+                        const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
+                        if(!worksheet[cellAddress]) continue;
+                        worksheet[cellAddress].s = {
+                            fill: { fgColor: { rgb: "FFFF0000" } }, 
+                            font: { color: { rgb: "FFFFFFFF" }, bold: true } 
+                        };
+                    }
                 }
             }
 
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, `Resgates - ${posicao}`);
-            // Ex: Relatorio_RECUSA_LOG.xlsx
             XLSX.writeFile(workbook, `Relatorio_${posicao.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
         }
     </script>
