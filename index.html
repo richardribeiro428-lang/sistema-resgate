@@ -798,17 +798,33 @@
                 });
             }
 
+            // --- NOVA REGRA DE ORDENAÇÃO: LOCAÇÃO ANTIGA > N° CX > SKU ---
             mapeamentoColunas.forEach(pos => {
                 window.dadosResgates[pos.nome].sort((a, b) => {
-                    const destA = String(a.destino).toUpperCase();
-                    const destB = String(b.destino).toUpperCase();
-                    if (destA < destB) return -1;
-                    if (destA > destB) return 1;
+                    // 1º Critério: LOCAÇÃO ANTIGA (Alfabético)
+                    const locA = String(a.locacaoAntiga || '').toUpperCase();
+                    const locB = String(b.locacaoAntiga || '').toUpperCase();
+                    if (locA < locB) return -1;
+                    if (locA > locB) return 1;
                     
-                    const itemA = String(a.item).toUpperCase();
-                    const itemB = String(b.item).toUpperCase();
+                    // 2º Critério: N° CX (Numérico)
+                    const numCxA = parseFloat(a.numCaixa) || 0;
+                    const numCxB = parseFloat(b.numCaixa) || 0;
+                    if (numCxA < numCxB) return -1;
+                    if (numCxA > numCxB) return 1;
+
+                    // Se empatar ou for texto puro, tenta desempatar o CX por string
+                    const strCxA = String(a.numCaixa || '').toUpperCase();
+                    const strCxB = String(b.numCaixa || '').toUpperCase();
+                    if (strCxA < strCxB) return -1;
+                    if (strCxA > strCxB) return 1;
+                    
+                    // 3º Critério: ITEM/SKU
+                    const itemA = String(a.item || '').toUpperCase();
+                    const itemB = String(b.item || '').toUpperCase();
                     if (itemA < itemB) return -1;
                     if (itemA > itemB) return 1;
+                    
                     return 0;
                 });
             });
