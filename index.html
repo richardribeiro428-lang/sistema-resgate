@@ -129,7 +129,7 @@
         .btn-voltar { background: none; border: none; color: #718096; font-size: 1rem; cursor: pointer; padding: 0; margin-bottom: 15px; font-family: inherit; font-weight: 600;}
         .btn-voltar:hover { color: #2d3748; }
         
-        .lista-header { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px;}
+        .lista-header { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;}
         .header-title-row { display: flex; justify-content: space-between; align-items: center; }
         .header-title-row h3 { margin: 0; color: #001529; font-size: 1.5rem;}
         
@@ -276,15 +276,6 @@
 
                 <div class="grid-posicoes" id="view-posicoes"></div>
 
-                <!-- CONTROLE DE DEVOLUÇÃO -->
-                <div id="controle-devolucao" style="display:none; margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; text-align: center;">
-                    <label style="font-weight: 700; color: #2d3748; margin-right: 10px;">Os itens já foram devolvidos?</label>
-                    <select id="select-devolvido" onchange="alterarStatusDevolucao()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e0; font-family: inherit; font-weight: 600; color: #4a5568; outline: none; cursor: pointer;">
-                        <option value="Não">Não (Pendente)</option>
-                        <option value="Sim">Sim (Já devolvidos)</option>
-                    </select>
-                </div>
-
                 <button class="btn-exportar" id="btn-exportar" onclick="exportarExcel()">📥 Exportar Relação de Resgates (Excel)</button>
                 <button class="btn-arquivar" id="btn-arquivar" onclick="arquivarResgate()" style="display:none;">🗄️ Finalizar e arquivar resgate</button>
 
@@ -316,6 +307,15 @@
                     <div class="header-title-row">
                         <h3 id="detalhes-titulo">Nome da Posição</h3>
                         <span id="detalhes-stats" style="color: #718096; font-size: 0.9rem; font-weight: 600;"></span>
+                    </div>
+
+                    <!-- CONTROLE DE DEVOLUÇÃO ESPECÍFICO POR POSIÇÃO -->
+                    <div id="controle-devolucao-posicao" style="margin-top: 5px; margin-bottom: 15px; display:flex; align-items:center; gap: 10px; background: #fff; padding: 10px 15px; border-radius: 8px; border: 1px solid #e2e8f0; width: fit-content;">
+                        <label style="font-weight: 700; color: #2d3748; font-size: 0.9rem;">Esta posição já foi devolvida?</label>
+                        <select id="select-devolvido-posicao" onchange="alterarStatusDevolucao()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e0; font-family: inherit; font-weight: 600; color: #4a5568; outline: none; cursor: pointer; font-size: 0.85rem;">
+                            <option value="Não">Não (Pendente)</option>
+                            <option value="Sim">Sim (Já devolvidos)</option>
+                        </select>
                     </div>
 
                     <!-- Abas Pendentes / Resgatados -->
@@ -420,7 +420,9 @@
         window.abaDetalhes = 'pendentes';
         window.modoHistorico = false;
         window.nomeHistoricoAtual = '';
-        window.statusDevolvido = 'Não'; // Estado global de devolução
+        
+        // AGORA O STATUS DE DEVOLVIDO É UM OBJETO QUE GUARDA A RESPOSTA DE CADA POSIÇÃO
+        window.statusDevolvido = {}; 
         
         let graficoItens = null;
         let graficoFinanceiro = null;
@@ -465,7 +467,7 @@
                     posicaoAtual: window.posicaoAtual,
                     planilhaCarregada: window.planilhaCarregada,
                     abaDetalhes: window.abaDetalhes,
-                    statusDevolvido: window.statusDevolvido, // Salvando opção de devolução
+                    statusDevolvido: window.statusDevolvido, // Salvando o objeto de devolução
                     salvoEm: new Date().toISOString()
                 };
 
@@ -521,9 +523,9 @@
                 window.posicaoAtual = estado.posicaoAtual || '';
                 window.planilhaCarregada = estado.planilhaCarregada === true;
                 window.abaDetalhes = estado.abaDetalhes || 'pendentes';
-                window.statusDevolvido = estado.statusDevolvido || 'Não'; // Carregando o status
                 
-                document.getElementById('select-devolvido').value = window.statusDevolvido;
+                // Carregando o status por posição (se não existir, inicia vazio)
+                window.statusDevolvido = estado.statusDevolvido || {};
 
                 if (window.planilhaCarregada) {
                     document.getElementById('upload-text').innerText = "Atualizar planilha de ganhos";
@@ -562,8 +564,7 @@
                 window.abaDetalhes = 'pendentes';
                 window.modoHistorico = false;
                 window.nomeHistoricoAtual = '';
-                window.statusDevolvido = 'Não';
-                document.getElementById('select-devolvido').value = 'Não';
+                window.statusDevolvido = {}; // Limpando status individual
 
                 document.getElementById('view-detalhes').style.display = 'none';
                 document.getElementById('view-dashboard').style.display = 'none';
@@ -571,7 +572,6 @@
                 document.getElementById('view-posicoes').innerHTML = '';
                 document.getElementById('btn-exportar').style.display = 'none';
                 document.getElementById('update-loc-wrapper').style.display = 'none';
-                document.getElementById('controle-devolucao').style.display = 'none';
                 document.getElementById('upload-text').innerText = "Adicionar planilha de ganhos";
                 document.getElementById('subtitle-text').innerText = "Faça o upload da planilha para carregar os locais de resgate.";
 
@@ -588,8 +588,10 @@
             if (el) el.innerText = texto;
         }
 
+        // SALVA O STATUS ESPECÍFICO DA POSIÇÃO ATUAL
         function alterarStatusDevolucao() {
-            window.statusDevolvido = document.getElementById('select-devolvido').value;
+            if (window.modoHistorico) return;
+            window.statusDevolvido[window.posicaoAtual] = document.getElementById('select-devolvido-posicao').value;
             salvarEstado();
         }
 
@@ -714,7 +716,13 @@
 
         function processarDados(linhas, mapaLocFixa) {
             window.dadosResgates = {};
-            mapeamentoColunas.forEach(pos => window.dadosResgates[pos.nome] = []);
+            mapeamentoColunas.forEach(pos => {
+                window.dadosResgates[pos.nome] = [];
+                // Se a posição ainda não tem um status definido, inicia como "Não"
+                if (!window.statusDevolvido[pos.nome]) {
+                    window.statusDevolvido[pos.nome] = 'Não';
+                }
+            });
 
             for (let i = 2; i < linhas.length; i++) {
                 const linha = linhas[i];
@@ -728,7 +736,6 @@
                 const destino = String(linha[11] || 'ND').trim();
                 const validacao = String(linha[39] || '#N/D').trim();
                 
-                // --- NOVOS CAMPOS LIDOS DO EXCEL ---
                 const locacaoAntiga = String(linha[2] || '-').trim();
                 const numCaixa = String(linha[8] || '-').trim();
 
@@ -749,7 +756,6 @@
                         let valorTotal = parseFloat(linha[pos.indexValor]);
                         if (isNaN(valorTotal)) valorTotal = 0;
 
-                        // A chave única garante que linhas com N° CX ou LOCAÇÃO ANTIGA diferentes não se misturem!
                         const chaveUnica = `${item.toUpperCase()}|${destino.toUpperCase()}|${validacao.toUpperCase()}|${locacaoAntiga.toUpperCase()}|${numCaixa.toUpperCase()}`;
                         
                         const itemExistente = window.dadosResgates[pos.nome].find(i => i.chaveUnica === chaveUnica);
@@ -821,13 +827,11 @@
             const btnNovo = document.getElementById('btn-novo-resgate');
             const btnArquivar = document.getElementById('btn-arquivar');
             const btnUpdateLoc = document.getElementById('update-loc-wrapper');
-            const ctrlDevolucao = document.getElementById('controle-devolucao');
 
             btnNovo.style.display = window.modoHistorico ? 'block' : 'none';
             btnArquivar.style.display = (window.planilhaCarregada && !window.modoHistorico) ? 'block' : 'none';
             
             if (btnUpdateLoc) btnUpdateLoc.style.display = (window.planilhaCarregada && !window.modoHistorico) ? 'block' : 'none';
-            if (ctrlDevolucao) ctrlDevolucao.style.display = (window.planilhaCarregada && !window.modoHistorico) ? 'block' : 'none';
             
             if (window.modoHistorico) {
                 document.getElementById('subtitle-text').innerText = `Visualização do histórico: ${window.nomeHistoricoAtual}`;
@@ -1051,6 +1055,11 @@
 
             window.posicaoAtual = posicaoNome;
             window.abaDetalhes = 'pendentes'; 
+            
+            // CARREGA O STATUS DE DEVOLUÇÃO DESSA POSIÇÃO
+            document.getElementById('select-devolvido-posicao').value = window.statusDevolvido[posicaoNome] || 'Não';
+            document.getElementById('select-devolvido-posicao').disabled = window.modoHistorico;
+
             document.getElementById('tab-pendentes').classList.add('active');
             document.getElementById('tab-resgatados').classList.remove('active');
             document.getElementById('btn-acao-massa').className = 'btn-selecionar-todos';
@@ -1301,7 +1310,7 @@
                     planilhaCarregada: true,
                     abaDetalhes: 'pendentes',
                     nome: nome.trim(),
-                    statusDevolvido: window.statusDevolvido, // Guardar status no histórico
+                    statusDevolvido: window.statusDevolvido, // Guardar status individual no histórico
                     arquivadoEm: new Date().toISOString()
                 };
                 const { error } = await supabaseClient.from('resgate_historico').insert({
@@ -1320,8 +1329,8 @@
                 window.planilhaCarregada = false;
                 window.modoHistorico = false;
                 window.nomeHistoricoAtual = '';
-                window.statusDevolvido = 'Não';
-                document.getElementById('select-devolvido').value = 'Não';
+                window.statusDevolvido = {}; // Limpando status
+                
                 document.getElementById('excel-file').value = '';
                 document.getElementById('excel-update-loc').value = '';
                 document.getElementById('upload-text').innerText = 'Adicionar planilha de ganhos';
@@ -1369,7 +1378,7 @@
                 window.posicaoAtual = '';
                 window.modoHistorico = true;
                 window.nomeHistoricoAtual = data.nome;
-                window.statusDevolvido = data.dados.statusDevolvido || 'Não'; // Resgatar o status de devolução na época
+                window.statusDevolvido = data.dados.statusDevolvido || {}; // Resgatar o status de devolução na época
                 document.getElementById('upload-text').innerText = 'Voltar ao histórico';
                 mudarAba('home');
                 renderizarPastas();
@@ -1391,8 +1400,8 @@
             window.planilhaCarregada = false;
             window.modoHistorico = false;
             window.nomeHistoricoAtual = '';
-            window.statusDevolvido = 'Não';
-            document.getElementById('select-devolvido').value = 'Não';
+            window.statusDevolvido = {};
+            
             document.getElementById('excel-file').value = '';
             document.getElementById('excel-update-loc').value = '';
             document.getElementById('upload-text').innerText = 'Adicionar planilha de ganhos';
@@ -1401,7 +1410,6 @@
             document.getElementById('btn-exportar').style.display = 'none';
             document.getElementById('btn-arquivar').style.display = 'none';
             document.getElementById('update-loc-wrapper').style.display = 'none';
-            document.getElementById('controle-devolucao').style.display = 'none';
             document.getElementById('btn-novo-resgate').style.display = 'none';
             atualizarStatusNuvem('☁️ Pronto para iniciar um novo resgate');
             mudarAba('home');
@@ -1580,11 +1588,12 @@
             const linhasVermelhas = [];
             let rowIndex = 0; 
             
-            // Texto formatado de devolução para colocar na tabela Excel
-            const txtDevolvido = window.statusDevolvido === 'Sim' ? 'Já Devolvido' : 'Não Devolvido';
-
             mapeamentoColunas.forEach(pos => {
                 const itens = window.dadosResgates[pos.nome];
+                // Checa a resposta salva para esta posição no objeto. Se não tiver nada, é "Não".
+                const statusPosicao = window.statusDevolvido[pos.nome] || 'Não'; 
+                const txtDevolvido = statusPosicao === 'Sim' ? 'Já Devolvido' : 'Não Devolvido';
+
                 itens.forEach(item => {
                     rowIndex++;
                     if (item.indisponivel) {
@@ -1601,7 +1610,7 @@
                             "VALIDAÇÃO QUALIDADE GB": item.validacao,
                             "VALOR": formatarMoeda(item.valorTotal), 
                             "STATUS (NO SISTEMA)": "Indisponível / Falta",
-                            "JÁ DEVOLVIDO?": txtDevolvido // Nova Coluna
+                            "JÁ DEVOLVIDO?": txtDevolvido // Usa o texto baseado na resposta para essa posição
                         });
                     } else {
                         dadosExportacao.push({
@@ -1616,7 +1625,7 @@
                             "VALIDAÇÃO QUALIDADE GB": item.validacao,
                             "VALOR": formatarMoeda(item.valorTotal), 
                             "STATUS (NO SISTEMA)": item.checado ? "Concluído" : "Pendente",
-                            "JÁ DEVOLVIDO?": txtDevolvido // Nova Coluna
+                            "JÁ DEVOLVIDO?": txtDevolvido // Usa o texto baseado na resposta para essa posição
                         });
                     }
                 });
