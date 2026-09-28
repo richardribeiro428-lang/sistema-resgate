@@ -178,6 +178,10 @@
         .btn-devolver-visiveis:hover { background:#b45309; }
         .btn-desfazer-devolucao { background:#fde68a; color:#92400e; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
         .btn-desfazer-devolucao:hover { background:#fcd34d; }
+        
+        /* NOVO BOTÃO DE EXPORTAR SETOR */
+        .btn-exportar-setor { background:#0ea5e9; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
+        .btn-exportar-setor:hover { background:#0284c7; }
 
         .lista-itens { list-style: none; padding: 0; margin: 0; max-height: 500px; overflow-y: auto; padding-right: 5px;}
         .lista-itens::-webkit-scrollbar { width: 8px; }
@@ -245,9 +249,11 @@
         .prog-bg { flex-grow: 1; height: 8px; background-color: rgba(255,255,255,0.3); border-radius: 4px; overflow: hidden; }
         .prog-fill { height: 100%; background-color: #00ff66; transition: width 0.3s; }
         
-        .charts-wrapper { display: none; justify-content: space-around; flex-wrap: wrap; gap: 20px; }
-        .chart-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; width: 45%; min-width: 300px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02);}
-        .chart-box h4 { margin: 0 0 15px 0; color: #2d3748; font-size: 1.1rem; }
+        /* NOVOS GRÁFICOS GRANDES E VERTICAIS */
+        .charts-wrapper { display: none; flex-direction: column; gap: 30px; width: 100%; padding-bottom: 30px; }
+        .chart-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; width: 100%; display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02);}
+        .chart-box h4 { margin: 0 0 15px 0; color: #2d3748; font-size: 1.2rem; }
+        .chart-box-canvas-wrapper { position: relative; width: 100%; height: 350px; }
         
         .empty-dash { text-align: center; color: #a0aec0; padding: 50px 0; }
     </style>
@@ -286,7 +292,7 @@
 
                 <div class="grid-posicoes" id="view-posicoes"></div>
 
-                <button class="btn-exportar" id="btn-exportar" onclick="exportarExcel()">📥 Exportar Relação de Resgates (Excel)</button>
+                <button class="btn-exportar" id="btn-exportar" onclick="exportarExcel()">📥 Exportar Relação GLOBAL (Excel)</button>
                 <button class="btn-arquivar" id="btn-arquivar" onclick="arquivarResgate()" style="display:none;">🗄️ Finalizar e arquivar resgate</button>
 
                 <div class="upload-wrapper">
@@ -364,7 +370,7 @@
                                 </div>
                             </div>
 
-                            <!-- Filtro de Devolução (NOVO) -->
+                            <!-- Filtro de Devolução -->
                             <div class="filtro-item">
                                 <label>Devolução:</label>
                                 <select id="filtro-devolucao" onchange="aoMudarFiltro()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #90cdf4; background: #fff; color: #2c5282; font-weight: 600; font-size: 0.85rem; outline: none; cursor: pointer; min-width: 170px;">
@@ -384,6 +390,7 @@
                             <button id="btn-acao-massa" class="btn-selecionar-todos" onclick="acaoTodosVisiveis()">☑ Selecionar Todos</button>
                             <button class="btn-devolver-visiveis" onclick="marcarDevolvidosVisiveis(true)">📦 Devolver Visíveis</button>
                             <button class="btn-desfazer-devolucao" onclick="marcarDevolvidosVisiveis(false)">Desfazer Devolução</button>
+                            <button class="btn-exportar-setor" onclick="exportarExcelSetor()">📥 Exportar Setor</button>
                         </div>
                     </div>
                 </div>
@@ -436,6 +443,9 @@
         
         let graficoItens = null;
         let graficoFinanceiro = null;
+
+        // Variavel global para alimentar os graficos
+        window.dashDataChart = { labels: [], concluidas: [], pendentes: [], devolvidas: [], naoDevolvidas: [] };
 
         // ============================================================
         // BANCO DE DADOS ONLINE - SUPABASE
@@ -908,7 +918,7 @@
             const skusSel = getSelecionados('.chk-sku');
             const valsSel = getSelecionados('.chk-validacao');
             const destsSel = getSelecionados('.chk-destino');
-            const filtroDevolucao = document.getElementById('filtro-devolucao').value; // Filtro de devolução atual
+            const filtroDevolucao = document.getElementById('filtro-devolucao').value;
 
             const itens = window.dadosResgates[posicaoNome];
             
@@ -951,7 +961,7 @@
             const skusSel = getSelecionados('.chk-sku');
             const valsSel = getSelecionados('.chk-validacao');
             const destsSel = getSelecionados('.chk-destino');
-            const filtroDevolucao = document.getElementById('filtro-devolucao').value; // Filtro de devolução atual
+            const filtroDevolucao = document.getElementById('filtro-devolucao').value;
 
             const itens = window.dadosResgates[posicaoNome];
             
@@ -1123,7 +1133,7 @@
             const skusSel = getSelecionados('.chk-sku');
             const valsSel = getSelecionados('.chk-validacao');
             const destsSel = getSelecionados('.chk-destino');
-            const filtroDevolucao = document.getElementById('filtro-devolucao').value; // Filtro de devolução atual
+            const filtroDevolucao = document.getElementById('filtro-devolucao').value;
 
             const itens = window.dadosResgates[posicaoNome] || [];
             return itens.filter(itemObj => {
@@ -1150,7 +1160,6 @@
             let countPendentes = 0;
             let countResgatados = 0;
 
-            // Para os contadores de aba, contamos todos (sem filtro de validação/sku/destino/devolução)
             todosItens.forEach(i => {
                 if (!i.indisponivel) {
                     if (i.checado) countResgatados++;
@@ -1158,9 +1167,8 @@
                 }
             });
 
-            // Usando for normal para manter o index original correto nas chamadas onclick
             todosItens.forEach((itemObj, index) => {
-                if (!itensVisiveis.includes(itemObj)) return; // Pula os que não passaram no filtro
+                if (!itensVisiveis.includes(itemObj)) return;
                 
                 qtdFiltrada++;
                 somaPecas += itemObj.qtd;
@@ -1170,7 +1178,6 @@
                 const somenteLeitura = window.modoHistorico ? 'disabled' : '';
                 const btnFalta = window.modoHistorico ? '' : `<button class="btn-falta" onclick="marcarIndisponivel('${posicaoNome}', ${index})" title="Remover item da lista">🚫 Falta</button>`;
                 
-                // BOTÃO DE DEVOLUÇÃO INDIVIDUAL
                 const btnDevolver = window.modoHistorico ? '' : `<button class="btn-item-devolver ${itemObj.devolvido ? 'ativo' : ''}" onclick="alternarDevolucao('${posicaoNome}', ${index})" title="Marcar como devolvido">${itemObj.devolvido ? '📦 Devolvido' : '📦 Devolver'}</button>`;
 
                 let htmlLocFixa = '';
@@ -1242,7 +1249,6 @@
             window.dadosResgates[posicaoNome][index].devolvido = !window.dadosResgates[posicaoNome][index].devolvido;
             salvarEstado();
             
-            // Atualiza os dropdowns caso a exclusão no filtro faça o item sumir
             atualizarDropdowns();
             renderizarListaItens(); 
 
@@ -1486,12 +1492,16 @@
 
                 <div id="dash-view-grafico" class="charts-wrapper">
                     <div class="chart-box">
-                        <h4>Status de Peças</h4>
-                        <canvas id="chartPecas" width="300" height="300"></canvas>
+                        <h4>Andamento por Setor (Peças)</h4>
+                        <div class="chart-box-canvas-wrapper">
+                            <canvas id="chartAndamento"></canvas>
+                        </div>
                     </div>
                     <div class="chart-box">
-                        <h4>Status Financeiro (R$)</h4>
-                        <canvas id="chartValor" width="300" height="300"></canvas>
+                        <h4>Status de Devolução por Setor (Peças)</h4>
+                        <div class="chart-box-canvas-wrapper">
+                            <canvas id="chartDevolucao"></canvas>
+                        </div>
                     </div>
                 </div>
             `;
@@ -1504,16 +1514,25 @@
             let totalLinhasGeral = 0;
             let setSKUsGeral = new Set();
 
-            window.dashData = { pecasConcluidas: 0, pecasPendentes: 0, valorConcluido: 0, valorPendente: 0 };
+            // Limpa dados de gráficos
+            window.dashDataChart = { labels: [], concluidas: [], pendentes: [], devolvidas: [], naoDevolvidas: [] };
 
             mapeamentoColunas.forEach(pos => {
                 const itensValidos = window.dadosResgates[pos.nome].filter(i => !i.indisponivel);
+                
+                // Popula os labels (eixos x) mesmo que não tenha itens para não desalinhar
+                window.dashDataChart.labels.push(pos.nome);
+
+                let valorPosicao = 0;
+                let qtdPecasPosicao = 0;
+                let linhasConcluidas = 0;
+                let pecasConcluidas = 0;
+                let pecasPendentes = 0;
+                let pecasDevolvidas = 0;
+                let pecasNaoDevolvidas = 0;
+                let setSKUsPosicao = new Set();
+
                 if(itensValidos.length > 0) {
-                    let valorPosicao = 0;
-                    let qtdPecasPosicao = 0;
-                    let linhasConcluidas = 0;
-                    let setSKUsPosicao = new Set();
-                    
                     itensValidos.forEach(i => {
                         valorPosicao += i.valorTotal; 
                         qtdPecasPosicao += i.qtd;
@@ -1522,11 +1541,15 @@
 
                         if(i.checado) {
                             linhasConcluidas++;
-                            window.dashData.pecasConcluidas += i.qtd;
-                            window.dashData.valorConcluido += i.valorTotal;
+                            pecasConcluidas += i.qtd;
                         } else {
-                            window.dashData.pecasPendentes += i.qtd;
-                            window.dashData.valorPendente += i.valorTotal;
+                            pecasPendentes += i.qtd;
+                        }
+
+                        if(i.devolvido) {
+                            pecasDevolvidas += i.qtd;
+                        } else {
+                            pecasNaoDevolvidas += i.qtd;
                         }
                     });
                     
@@ -1550,6 +1573,13 @@
                         </td>
                     </tr>`;
                 }
+                
+                // Grava arrays pro grafico
+                window.dashDataChart.concluidas.push(pecasConcluidas);
+                window.dashDataChart.pendentes.push(pecasPendentes);
+                window.dashDataChart.devolvidas.push(pecasDevolvidas);
+                window.dashDataChart.naoDevolvidas.push(pecasNaoDevolvidas);
+
             });
 
             const percentualGeral = totalLinhasGeral > 0 ? Math.round((totalItensConcluidosGeral / totalLinhasGeral) * 100) : 0;
@@ -1573,42 +1603,40 @@
             if (graficoItens) graficoItens.destroy();
             if (graficoFinanceiro) graficoFinanceiro.destroy();
 
-            const ctxPecas = document.getElementById('chartPecas').getContext('2d');
-            const ctxValor = document.getElementById('chartValor').getContext('2d');
+            const ctxAndamento = document.getElementById('chartAndamento').getContext('2d');
+            const ctxDevolucao = document.getElementById('chartDevolucao').getContext('2d');
 
-            const dadosComuns = {
-                labels: ['Concluído', 'Pendente'],
-                borderWidth: 0
-            };
-
-            graficoItens = new Chart(ctxPecas, {
-                type: 'doughnut',
+            graficoItens = new Chart(ctxAndamento, {
+                type: 'bar',
                 data: {
-                    labels: Object.values(dadosComuns.labels),
-                    datasets: [{
-                        data: [window.dashData.pecasConcluidas, window.dashData.pecasPendentes],
-                        backgroundColor: ['#00B050', '#cbd5e0'],
-                        borderWidth: 0
-                    }]
-                },
-                options: { responsive: false, maintainAspectRatio: false, cutout: '65%' }
-            });
-
-            graficoFinanceiro = new Chart(ctxValor, {
-                type: 'doughnut',
-                data: {
-                    labels: Object.values(dadosComuns.labels),
-                    datasets: [{
-                        data: [window.dashData.valorConcluido, window.dashData.valorPendente],
-                        backgroundColor: ['#0070C0', '#cbd5e0'],
-                        borderWidth: 0
-                    }]
+                    labels: window.dashDataChart.labels,
+                    datasets: [
+                        { label: 'Concluído', data: window.dashDataChart.concluidas, backgroundColor: '#00B050' },
+                        { label: 'Pendente', data: window.dashDataChart.pendentes, backgroundColor: '#cbd5e0' }
+                    ]
                 },
                 options: { 
-                    responsive: false, maintainAspectRatio: false, cutout: '65%',
-                    plugins: {
-                        tooltip: { callbacks: { label: context => ' R$ ' + formatarMoeda(context.raw) } }
-                    }
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { x: { stacked: true }, y: { stacked: true } },
+                    plugins: { legend: { position: 'top' } }
+                }
+            });
+
+            graficoFinanceiro = new Chart(ctxDevolucao, {
+                type: 'bar',
+                data: {
+                    labels: window.dashDataChart.labels,
+                    datasets: [
+                        { label: 'Já Devolvido', data: window.dashDataChart.devolvidas, backgroundColor: '#d97706' },
+                        { label: 'Não Devolvido', data: window.dashDataChart.naoDevolvidas, backgroundColor: '#cbd5e0' }
+                    ]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { x: { stacked: true }, y: { stacked: true } },
+                    plugins: { legend: { position: 'top' } }
                 }
             });
         }
@@ -1618,8 +1646,10 @@
         });
 
         // ==========================================
-        // EXPORTAÇÃO EXCEL COM AS NOVAS COLUNAS
+        // EXPORTAÇÕES EXCEL
         // ==========================================
+        
+        // EXPORTAÇÃO GLOBAL DE TODOS OS SETORES
         function exportarExcel() {
             const dadosExportacao = [];
             const linhasVermelhas = [];
@@ -1630,43 +1660,83 @@
 
                 itens.forEach(item => {
                     rowIndex++;
-                    
-                    // Checa se o item (linha) específico foi marcado como devolvido no sistema
                     const txtDevolvido = item.devolvido ? 'Já Devolvido' : 'Não Devolvido';
-
-                    if (item.indisponivel) {
-                        linhasVermelhas.push(rowIndex);
-                        dadosExportacao.push({
-                            "SKU": item.item, 
-                            "QUANTIDADE RESGATADA": item.qtd, 
-                            "QUAL RESGATE": pos.nome,
-                            "LOTE": item.lote, 
-                            "DESTINO": item.destino, 
-                            "LOC. FIXA": item.locFixa ? item.locFixa : "-", 
-                            "LOCAÇÃO ANTIGA": item.locacaoAntiga,
-                            "N° CX": item.numCaixa,
-                            "VALIDAÇÃO QUALIDADE GB": item.validacao,
-                            "VALOR": formatarMoeda(item.valorTotal), 
-                            "STATUS (NO SISTEMA)": "Indisponível / Falta",
-                            "JÁ DEVOLVIDO?": txtDevolvido 
-                        });
-                    } else {
-                        dadosExportacao.push({
-                            "SKU": item.item, 
-                            "QUANTIDADE RESGATADA": item.qtd, 
-                            "QUAL RESGATE": pos.nome,
-                            "LOTE": item.lote, 
-                            "DESTINO": item.destino, 
-                            "LOC. FIXA": item.locFixa ? item.locFixa : "-", 
-                            "LOCAÇÃO ANTIGA": item.locacaoAntiga,
-                            "N° CX": item.numCaixa,
-                            "VALIDAÇÃO QUALIDADE GB": item.validacao,
-                            "VALOR": formatarMoeda(item.valorTotal), 
-                            "STATUS (NO SISTEMA)": item.checado ? "Concluído" : "Pendente",
-                            "JÁ DEVOLVIDO?": txtDevolvido 
-                        });
-                    }
+                    const linhaObj = {
+                        "SKU": item.item, 
+                        "QUANTIDADE RESGATADA": item.qtd, 
+                        "QUAL RESGATE": pos.nome,
+                        "LOTE": item.lote, 
+                        "DESTINO": item.destino, 
+                        "LOC. FIXA": item.locFixa ? item.locFixa : "-", 
+                        "LOCAÇÃO ANTIGA": item.locacaoAntiga,
+                        "N° CX": item.numCaixa,
+                        "VALIDAÇÃO QUALIDADE GB": item.validacao,
+                        "VALOR": formatarMoeda(item.valorTotal), 
+                        "STATUS (NO SISTEMA)": item.indisponivel ? "Indisponível / Falta" : (item.checado ? "Concluído" : "Pendente"),
+                        "JÁ DEVOLVIDO?": txtDevolvido 
+                    };
+                    dadosExportacao.push(linhaObj);
+                    
+                    if (item.indisponivel) linhasVermelhas.push(rowIndex);
                 });
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(dadosExportacao);
+            const range = XLSX.utils.decode_range(worksheet['!ref']);
+            for(let row of linhasVermelhas) {
+                for(let col = range.s.c; col <= range.e.c; col++) {
+                    const cellAddress = XLSX.utils.encode_cell({r: row, c: col});
+                    if(!worksheet[cellAddress]) continue;
+                    worksheet[cellAddress].s = {
+                        fill: { fgColor: { rgb: "FFFF0000" } }, 
+                        font: { color: { rgb: "FFFFFFFF" }, bold: true } 
+                    };
+                }
+            }
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Relação de Resgates");
+            XLSX.writeFile(workbook, "Relatorio_Resgates_GLOBAL.xlsx");
+        }
+
+        // EXPORTAÇÃO ESPECÍFICA DO SETOR ATUAL
+        function exportarExcelSetor() {
+            const posicao = window.posicaoAtual;
+            if (!posicao) return;
+            
+            const dadosExportacao = [];
+            const linhasVermelhas = [];
+            let rowIndex = 0; 
+            
+            const itens = window.dadosResgates[posicao] || [];
+            if(itens.length === 0) {
+                alert("Não há itens neste setor para exportar.");
+                return;
+            }
+
+            itens.forEach(item => {
+                rowIndex++;
+                const txtDevolvido = item.devolvido ? 'Já Devolvido' : 'Não Devolvido';
+                const linhaObj = {
+                    "SKU": item.item, 
+                    "QUANTIDADE RESGATADA": item.qtd, 
+                    "QUAL RESGATE": posicao,
+                    "LOTE": item.lote, 
+                    "DESTINO": item.destino, 
+                    "LOC. FIXA": item.locFixa ? item.locFixa : "-", 
+                    "LOCAÇÃO ANTIGA": item.locacaoAntiga,
+                    "N° CX": item.numCaixa,
+                    "VALIDAÇÃO QUALIDADE GB": item.validacao,
+                    "VALOR": formatarMoeda(item.valorTotal), 
+                    "STATUS (NO SISTEMA)": item.indisponivel ? "Indisponível / Falta" : (item.checado ? "Concluído" : "Pendente"),
+                    "JÁ DEVOLVIDO?": txtDevolvido 
+                };
+                
+                dadosExportacao.push(linhaObj);
+                
+                if (item.indisponivel) {
+                    linhasVermelhas.push(rowIndex);
+                }
             });
 
             const worksheet = XLSX.utils.json_to_sheet(dadosExportacao);
@@ -1684,8 +1754,9 @@
             }
 
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Relação de Resgates");
-            XLSX.writeFile(workbook, "Relatorio_Resgates_Atualizado.xlsx");
+            XLSX.utils.book_append_sheet(workbook, worksheet, `Resgates - ${posicao}`);
+            // Ex: Relatorio_RECUSA_LOG.xlsx
+            XLSX.writeFile(workbook, `Relatorio_${posicao.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
         }
     </script>
 </body>
