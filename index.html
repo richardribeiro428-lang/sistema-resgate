@@ -143,7 +143,7 @@
         .filtro-item { display: flex; align-items: center; gap: 5px; }
         .filtro-item label { font-weight: 700; color: #2b6cb0; font-size: 0.85rem; }
         
-        /* Dropdown Multi-Select */
+        /* Dropdown Multi-Select (Padronizado) */
         .dropdown-check-list { position: relative; display: inline-block; min-width: 170px; flex-grow: 1; max-width: 250px;}
         .dropdown-check-list .anchor { padding: 6px 10px; border-radius: 6px; border: 1px solid #90cdf4; cursor: pointer; background: #fff; color: #2c5282; font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; user-select: none; }
         .dropdown-check-list .items { display: none; position: absolute; top: 100%; left: 0; background: #fff; border: 1px solid #90cdf4; border-radius: 6px; max-height: 300px; overflow-y: auto; width: 100%; z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 0; margin: 5px 0 0 0; }
@@ -160,6 +160,7 @@
         .btn-desfazer-todos { background-color: #718096; color: white; border: none; padding: 8px 13px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600; transition: background 0.2s; }
         .btn-desfazer-todos:hover { background-color: #4a5568; }
 
+        /* BOTÃO LIMPAR FILTROS DESTACADO */
         .btn-limpar-filtros { background-color: #fff; color: #d97706; border: 1px solid #d97706; padding: 8px 13px; border-radius: 7px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 0.82rem; transition: background 0.2s; }
         .btn-limpar-filtros:hover { background-color: #fef3c7; }
 
@@ -194,7 +195,7 @@
         .item-dados { flex-grow: 1; font-size: 0.95rem; color: #4a5568;}
         .item-dados strong { color: #38a169; } 
         
-        .badge-qtd { background-color: #ed8936; color: white; padding: 5px 12px; border-radius: 12px; font-size: 0.9rem; font-weight: bold; }
+        .badge-qtd { background-color: #ed8936; color: white; padding: 5px 12px; border-radius: 12px; font-size: 0.9rem; font-weight: bold; display: inline-flex; align-items: center; }
         .badge-destino { color: #805ad5; font-weight: bold; }
         .badge-valid { color: #e60000; font-weight: bold; }
         
@@ -202,8 +203,11 @@
         .destino-col-label { display:inline-block; font-size:0.72rem; color:#a0aec0; font-weight:700; text-transform:uppercase; margin-bottom:2px; }
         .destino-copiavel { display:block; color:#5b21b6; font-weight:800; font-size:0.95rem; user-select:text; }
         
+        /* ÍCONES PARA EDIÇÃO */
         .edit-icon { cursor: pointer; font-size: 0.8rem; margin-left: 5px; opacity: 0.6; transition: opacity 0.2s; }
         .edit-icon:hover { opacity: 1; }
+        .edit-icon-qtd { cursor: pointer; font-size: 0.75rem; margin-left: 6px; color: white; opacity: 0.7; transition: opacity 0.2s; }
+        .edit-icon-qtd:hover { opacity: 1; }
         
         .historico-lista { display:grid; gap:12px; text-align:left; }
         .historico-card { border:1px solid #e2e8f0; border-radius:12px; padding:16px; display:flex; justify-content:space-between; align-items:center; gap:15px; }
@@ -219,6 +223,7 @@
         .btn-novo-resgate:hover { background:#c90000; }
         .modo-historico { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; padding:9px 12px; border-radius:7px; font-size:0.82rem; font-weight:700; margin-bottom:12px; }
 
+        /* Botões individuais do item */
         .btn-falta { background-color: #ffe5e5; color: #e60000; border: 1px solid #ffcccc; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;}
         .btn-falta:hover { background-color: #e60000; color: white; }
 
@@ -245,6 +250,7 @@
         .prog-bg { flex-grow: 1; height: 8px; background-color: rgba(255,255,255,0.3); border-radius: 4px; overflow: hidden; }
         .prog-fill { height: 100%; background-color: #00ff66; transition: width 0.3s; }
         
+        /* GRÁFICOS GRANDES E VERTICAIS */
         .charts-wrapper { display: none; flex-direction: column; gap: 30px; width: 100%; padding-bottom: 30px; }
         .chart-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; width: 100%; display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02);}
         .chart-box h4 { margin: 0 0 15px 0; color: #2d3748; font-size: 1.2rem; }
@@ -547,7 +553,7 @@
                 return true;
             } catch (erro) {
                 console.error('Erro ao carregar dados do Supabase:', erro);
-                atualizarStatusNuvem('⚠️ Erro ao conectar ao banco (Verifique RLS/Tabelas)');
+                atualizarStatusNuvem('⚠️️ Erro ao conectar ao banco (Verifique RLS/Tabelas)');
                 return false;
             }
         }
@@ -1136,6 +1142,55 @@
             }
         }
 
+        // NOVO: Função para editar a quantidade 
+        function editarQtd(posicaoNome, index) {
+            if (window.modoHistorico) return;
+            const itemObj = window.dadosResgates[posicaoNome][index];
+            const atual = itemObj.qtd;
+            
+            const novoStr = prompt(`Quantidade atual: ${atual}\nDigite a nova quantidade total para este item:`, atual);
+            
+            if (novoStr !== null && novoStr.trim() !== "") {
+                const novo = parseFloat(novoStr);
+                
+                if (!isNaN(novo) && novo >= 0) {
+                    const proporcao = atual > 0 ? (novo / atual) : 0;
+                    
+                    itemObj.qtd = novo;
+                    itemObj.valorTotal = itemObj.valorTotal * proporcao;
+
+                    if (itemObj.subItens && itemObj.subItens.length > 0) {
+                        if (itemObj.subItens.length === 1) {
+                            itemObj.subItens[0].qtd = novo;
+                            itemObj.subItens[0].valorTotal = itemObj.subItens[0].valorTotal * proporcao;
+                        } else {
+                            // Distribui a nova quantidade proporcionalmente entre as caixas agrupadas
+                            let somaQtd = 0;
+                            let somaValor = 0;
+                            
+                            for (let i = 0; i < itemObj.subItens.length; i++) {
+                                if (i === itemObj.subItens.length - 1) {
+                                    // A última caixa recebe o resto para garantir que a soma feche exatamente no 'novo'
+                                    itemObj.subItens[i].qtd = novo - somaQtd;
+                                    itemObj.subItens[i].valorTotal = itemObj.valorTotal - somaValor;
+                                } else {
+                                    itemObj.subItens[i].qtd = Math.round(itemObj.subItens[i].qtd * proporcao);
+                                    itemObj.subItens[i].valorTotal = itemObj.subItens[i].valorTotal * proporcao;
+                                    somaQtd += itemObj.subItens[i].qtd;
+                                    somaValor += itemObj.subItens[i].valorTotal;
+                                }
+                            }
+                        }
+                    }
+                    
+                    salvarEstado();
+                    renderizarListaItens();
+                } else {
+                    alert("Por favor, insira um número válido maior ou igual a zero.");
+                }
+            }
+        }
+
         // ==========================================
         // OBTENÇÃO DE ITENS E AÇÕES EM MASSA (CÓPIAS E CHECKS E DEVOLUÇÃO)
         // ==========================================
@@ -1223,7 +1278,12 @@
                             </div>
                             ${htmlLocFixa}
                         </div>
-                        <span class="badge-qtd">Qtd: ${itemObj.qtd}</span>
+                        
+                        <span class="badge-qtd">
+                            Qtd: ${itemObj.qtd}
+                            ${window.modoHistorico ? '' : `<span class="edit-icon-qtd" onclick="editarQtd('${posicaoNome}',${index})" title="Editar Quantidade">✏️</span>`}
+                        </span>
+                        
                         ${btnDevolver}
                         ${btnFalta}
                     </li>`;
