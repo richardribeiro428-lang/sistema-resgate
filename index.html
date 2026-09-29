@@ -182,7 +182,7 @@
         .btn-exportar-setor:hover { background:#0284c7; }
         
         /* NOVO BOTÃO DE AJUSTE AUTOMÁTICO */
-        .btn-ajuste-qtd { background:#059669; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
+        .btn-ajuste-qtd { background:#059669; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; display: none; }
         .btn-ajuste-qtd:hover { background:#047857; }
 
         .lista-itens { list-style: none; padding: 0; margin: 0; max-height: 500px; overflow-y: auto; padding-right: 5px;}
@@ -397,7 +397,7 @@
                             <button class="btn-exportar-setor" onclick="exportarExcelSetor()">📥 Exportar Setor</button>
                             
                             <!-- NOVO BOTÃO DE AJUSTAR QTD EM LOTE -->
-                            <label for="excel-ajuste-qtd" class="btn-ajuste-qtd">
+                            <label for="excel-ajuste-qtd" id="label-ajuste-qtd" class="btn-ajuste-qtd">
                                 ⚙️ Ajustar Qtds em Lote
                             </label>
                             <input type="file" id="excel-ajuste-qtd" accept=".xlsx, .xls, .xlsm" style="display:none;" />
@@ -538,7 +538,7 @@
                 if (error) throw error;
 
                 if (!data || !data.dados) {
-                    atualizarStatusNuvem('☁️ Banco conectado — nenhum dado salvo');
+                    atualizarStatusNuvem('☁️️ Banco conectado — nenhum dado salvo');
                     return false;
                 }
 
@@ -615,7 +615,7 @@
                 document.getElementById('upload-text').innerText = "Adicionar planilha de ganhos";
                 document.getElementById('subtitle-text').innerText = "Faça o upload da planilha para carregar os locais de resgate.";
 
-                atualizarStatusNuvem('☁️ Banco vazio');
+                atualizarStatusNuvem('☁️️ Banco vazio');
                 alert('Dados da nuvem apagados com sucesso.');
             } catch (erro) {
                 console.error(erro);
@@ -755,6 +755,12 @@
 
             const posicao = window.posicaoAtual;
             if (!posicao) return;
+
+            if (posicao !== 'Ganho') {
+                alert('A função de ajuste em lote é exclusiva do setor Ganho.');
+                e.target.value = '';
+                return;
+            }
 
             if (!confirm(`ATENÇÃO: Você está prestes a ajustar automaticamente as quantidades do setor ${posicao}.\n\nItens que NÃO estiverem na planilha serão ZERADOS e irão para as Sobras.\n\nDeseja continuar?`)) {
                 e.target.value = '';
@@ -1225,6 +1231,12 @@
 
             window.posicaoAtual = posicaoNome;
             window.abaDetalhes = 'pendentes'; 
+
+            // NOVO: Mostrar o botão de ajuste de lote APENAS na aba de Ganho
+            const labelAjuste = document.getElementById('label-ajuste-qtd');
+            if (labelAjuste) {
+                labelAjuste.style.display = (posicaoNome === 'Ganho' && !window.modoHistorico) ? 'inline-block' : 'none';
+            }
 
             document.getElementById('tab-pendentes').classList.add('active');
             document.getElementById('tab-resgatados').classList.remove('active');
