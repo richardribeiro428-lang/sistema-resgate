@@ -553,7 +553,7 @@
                 return true;
             } catch (erro) {
                 console.error('Erro ao carregar dados do Supabase:', erro);
-                atualizarStatusNuvem('⚠️️ Erro ao conectar ao banco (Verifique RLS/Tabelas)');
+                atualizarStatusNuvem('⚠️ Erro ao conectar ao banco (Verifique RLS/Tabelas)');
                 return false;
             }
         }
@@ -779,7 +779,7 @@
                                 itemExistente.lote = lotesAtuais.join(' / ');
                             }
                             
-                            // Adiciona aos subitens para exportação separada
+                            // Adiciona aos subitens para exportação separada e edição específica
                             itemExistente.subItens.push({
                                 locacaoAntiga: locacaoAntiga,
                                 numCaixa: numCaixa,
@@ -1142,51 +1142,85 @@
             }
         }
 
-        // NOVO: Função para editar a quantidade 
+        // NOVO: Função para editar a quantidade com suporte a caixas múltiplas (subItens)
         function editarQtd(posicaoNome, index) {
             if (window.modoHistorico) return;
             const itemObj = window.dadosResgates[posicaoNome][index];
             const atual = itemObj.qtd;
-            
-            const novoStr = prompt(`Quantidade atual: ${atual}\nDigite a nova quantidade total para este item:`, atual);
-            
-            if (novoStr !== null && novoStr.trim() !== "") {
-                const novo = parseFloat(novoStr);
-                
-                if (!isNaN(novo) && novo >= 0) {
-                    const proporcao = atual > 0 ? (novo / atual) : 0;
-                    
-                    itemObj.qtd = novo;
-                    itemObj.valorTotal = itemObj.valorTotal * proporcao;
 
-                    if (itemObj.subItens && itemObj.subItens.length > 0) {
-                        if (itemObj.subItens.length === 1) {
-                            itemObj.subItens[0].qtd = novo;
-                            itemObj.subItens[0].valorTotal = itemObj.subItens[0].valorTotal * proporcao;
-                        } else {
-                            // Distribui a nova quantidade proporcionalmente entre as caixas agrupadas
-                            let somaQtd = 0;
-                            let somaValor = 0;
-                            
-                            for (let i = 0; i < itemObj.subItens.length; i++) {
-                                if (i === itemObj.subItens.length - 1) {
-                                    // A última caixa recebe o resto para garantir que a soma feche exatamente no 'novo'
-                                    itemObj.subItens[i].qtd = novo - somaQtd;
-                                    itemObj.subItens[i].valorTotal = itemObj.valorTotal - somaValor;
-                                } else {
-                                    itemObj.subItens[i].qtd = Math.round(itemObj.subItens[i].qtd * proporcao);
-                                    itemObj.subItens[i].valorTotal = itemObj.subItens[i].valorTotal * proporcao;
-                                    somaQtd += itemObj.subItens[i].qtd;
-                                    somaValor += itemObj.subItens[i].valorTotal;
-                                }
-                            }
-                        }
+            // Se o item for composto por mais de uma caixa, pergunta individualmente
+            if (itemObj.subItens && itemObj.subItens.length > 1) {
+                let novoTotalQtd = 0;
+                let novoTotalValor = 0;
+                let cancelou = false;
+                
+                // Cópia temporária para não alterar dados se o usuário cancelar no meio
+                let subItensTemp = JSON.parse(JSON.stringify(itemObj.subItens));
+
+                alert(`Este item está dividido em ${subItensTemp.length} caixas diferentes.\nVamos ajustar a quantidade de cada uma individualmente.`);
+
+                for (let i = 0; i < subItensTemp.length; i++) {
+                    let sub = subItensTemp[i];
+                    let msg = `📦 CAIXA ${i + 1} de ${subItensTemp.length}\n` +
+                              `Locação: ${sub.locacaoAntiga} | Nº CX: ${sub.numCaixa} | Lote: ${sub.loteOriginal}\n\n` +
+                              `Quantidade atual nesta caixa: ${sub.qtd}\n` +
+                              `Digite a nova quantidade APENAS para esta caixa:`;
+                              
+                    let resp = prompt(msg, sub.qtd);
+                    
+                    if (resp === null) {
+                        cancelou = true;
+                        break;
                     }
+                    
+                    let novaQtdCaixa = parseFloat(resp);
+                    if (isNaN(novaQtdCaixa) || novaQtdCaixa < 0) {
+                        alert("Valor inválido! Edição cancelada.");
+                        cancelou = true;
+                        break;
+                    }
+
+                    // Ajusta o valor financeiro da caixa baseado na proporção da nova quantidade
+                    let proporcao = sub.qtd > 0 ? (novaQtdCaixa / sub.qtd) : 0;
+                    sub.qtd = novaQtdCaixa;
+                    sub.valorTotal = sub.valorTotal * proporcao;
+
+                    novoTotalQtd += sub.qtd;
+                    novoTotalValor += sub.valorTotal;
+                }
+
+                if (!cancelou) {
+                    itemObj.subItens = subItensTemp;
+                    itemObj.qtd = novoTotalQtd;
+                    itemObj.valorTotal = novoTotalValor;
                     
                     salvarEstado();
                     renderizarListaItens();
-                } else {
-                    alert("Por favor, insira um número válido maior ou igual a zero.");
+                }
+
+            } else {
+                // Se for só uma caixa, funciona como sempre: 1 pergunta direta
+                const novoStr = prompt(`Quantidade atual: ${atual}\nDigite a nova quantidade total para este item:`, atual);
+                
+                if (novoStr !== null && novoStr.trim() !== "") {
+                    const novo = parseFloat(novoStr);
+                    
+                    if (!isNaN(novo) && novo >= 0) {
+                        const proporcao = atual > 0 ? (novo / atual) : 0;
+                        
+                        itemObj.qtd = novo;
+                        itemObj.valorTotal = itemObj.valorTotal * proporcao;
+
+                        if (itemObj.subItens && itemObj.subItens.length === 1) {
+                            itemObj.subItens[0].qtd = novo;
+                            itemObj.subItens[0].valorTotal = itemObj.subItens[0].valorTotal * proporcao;
+                        }
+                        
+                        salvarEstado();
+                        renderizarListaItens();
+                    } else {
+                        alert("Por favor, insira um número válido maior ou igual a zero.");
+                    }
                 }
             }
         }
@@ -1283,7 +1317,7 @@
                             Qtd: ${itemObj.qtd}
                             ${window.modoHistorico ? '' : `<span class="edit-icon-qtd" onclick="editarQtd('${posicaoNome}',${index})" title="Editar Quantidade">✏️</span>`}
                         </span>
-                        
+
                         ${btnDevolver}
                         ${btnFalta}
                     </li>`;
