@@ -143,7 +143,7 @@
         .filtro-item { display: flex; align-items: center; gap: 5px; }
         .filtro-item label { font-weight: 700; color: #2b6cb0; font-size: 0.85rem; }
         
-        /* Dropdown Multi-Select (Padronizado) */
+        /* Dropdown Multi-Select */
         .dropdown-check-list { position: relative; display: inline-block; min-width: 170px; flex-grow: 1; max-width: 250px;}
         .dropdown-check-list .anchor { padding: 6px 10px; border-radius: 6px; border: 1px solid #90cdf4; cursor: pointer; background: #fff; color: #2c5282; font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; user-select: none; }
         .dropdown-check-list .items { display: none; position: absolute; top: 100%; left: 0; background: #fff; border: 1px solid #90cdf4; border-radius: 6px; max-height: 300px; overflow-y: auto; width: 100%; z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 0; margin: 5px 0 0 0; }
@@ -159,6 +159,7 @@
         .btn-selecionar-todos:hover { background-color: #2b6cb0; }
         .btn-desfazer-todos { background-color: #718096; color: white; border: none; padding: 8px 13px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600; transition: background 0.2s; }
         .btn-desfazer-todos:hover { background-color: #4a5568; }
+
         .btn-limpar-filtros { background-color: #fff; color: #d97706; border: 1px solid #d97706; padding: 8px 13px; border-radius: 7px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 0.82rem; transition: background 0.2s; }
         .btn-limpar-filtros:hover { background-color: #fef3c7; }
 
@@ -566,7 +567,7 @@
                 return true;
             } catch (erro) {
                 console.error('Erro ao carregar dados do Supabase:', erro);
-                atualizarStatusNuvem('⚠️ Erro ao conectar ao banco (Verifique RLS/Tabelas)');
+                atualizarStatusNuvem('⚠ Erro ao conectar ao banco (Verifique RLS/Tabelas)');
                 return false;
             }
         }
@@ -1159,7 +1160,6 @@
             }
         }
 
-        // NOVO: Função para editar a quantidade de forma reversa entre as caixas agrupadas
         function editarQtd(posicaoNome, index) {
             if (window.modoHistorico) return;
             const itemObj = window.dadosResgates[posicaoNome][index];
@@ -1571,11 +1571,11 @@
         function trocarVisaoDash(visao) {
             document.getElementById('dash-tab-tabela').classList.remove('active');
             document.getElementById('dash-tab-grafico').classList.remove('active');
-            document.getElementById('dash-tab-sobras').classList.remove('active'); // NOVO
+            document.getElementById('dash-tab-sobras').classList.remove('active'); 
             
             document.getElementById('dash-view-tabela').style.display = 'none';
             document.getElementById('dash-view-grafico').style.display = 'none';
-            document.getElementById('dash-view-sobras').style.display = 'none'; // NOVO
+            document.getElementById('dash-view-sobras').style.display = 'none'; 
 
             if(visao === 'tabela') {
                 document.getElementById('dash-tab-tabela').classList.add('active');
@@ -1584,14 +1584,13 @@
                 document.getElementById('dash-tab-grafico').classList.add('active');
                 document.getElementById('dash-view-grafico').style.display = 'flex';
                 desenharGraficos();
-            } else { // NOVO
+            } else { 
                 document.getElementById('dash-tab-sobras').classList.add('active');
                 document.getElementById('dash-view-sobras').style.display = 'block';
             }
         }
 
         function renderizarDashboard() {
-            // ADICIONADO A 3ª ABA DE SOBRAS NO LAYOUT DO DASHBOARD
             let layoutDash = `
                 <div class="dash-tabs">
                     <button class="dash-tab-btn active" id="dash-tab-tabela" onclick="trocarVisaoDash('tabela')">Tabela de Dados</button>
@@ -1621,10 +1620,10 @@
                     </div>
                 </div>
 
-                <!-- NOVA ABA: SOBRAS DE CONSIDERAÇÃO -->
+                <!-- ABA: SOBRAS DE CONSIDERAÇÃO ATUALIZADA -->
                 <div id="dash-view-sobras" style="display: none;">
                     <table class="dashboard-table">
-                        <thead><tr><th>Setor</th><th>Nº CX</th><th>SKU</th><th>Quantidade Retirada</th></tr></thead>
+                        <thead><tr><th>Setor</th><th>Locação Antiga</th><th>Nº CX</th><th>SKU</th><th>Quantidade Retirada</th><th>Valor Retirado</th></tr></thead>
                         <tbody id="dash-tbody-sobras"></tbody>
                     </table>
                 </div>
@@ -1632,8 +1631,9 @@
             document.getElementById('dashboard-conteudo').innerHTML = layoutDash;
 
             let htmlTbody = '';
-            let htmlSobras = ''; // NOVO
-            let totalSobras = 0; // NOVO
+            let htmlSobras = ''; 
+            let totalSobras = 0; 
+            let totalSobrasValor = 0; // NOVO
             let somaGeralValor = 0;
             let totalPecasGeral = 0;
             let totalItensConcluidosGeral = 0;
@@ -1676,18 +1676,23 @@
                             pecasNaoDevolvidas += i.qtd;
                         }
 
-                        // NOVO: CHECANDO SOBRAS E PREENCHENDO A TABELA
+                        // CHECANDO SOBRAS E PREENCHENDO A TABELA
                         if(i.subItens) {
                             i.subItens.forEach(sub => {
                                 const retirada = sub.qtdOriginal - sub.qtd;
+                                const valorRetirado = sub.valorOriginal - sub.valorTotal; // NOVO
+
                                 if(retirada > 0) {
                                     htmlSobras += `<tr>
                                         <td>${pos.nome}</td>
+                                        <td class="center-cell">${sub.locacaoAntiga || '-'}</td>
                                         <td class="center-cell">${sub.numCaixa}</td>
                                         <td class="center-cell">${i.item}</td>
                                         <td class="center-cell" style="color: #fff; background-color:#e60000; font-weight: bold;">- ${retirada} peças</td>
+                                        <td class="center-cell" style="color: #fff; background-color:#e60000; font-weight: bold;">- R$ ${formatarMoeda(valorRetirado)}</td>
                                     </tr>`;
                                     totalSobras += retirada;
+                                    totalSobrasValor += valorRetirado; // NOVO
                                 }
                             });
                         }
@@ -1738,11 +1743,12 @@
 
             // FECHAMENTO DA TABELA DE SOBRAS
             if(htmlSobras === '') {
-                htmlSobras = `<tr><td colspan="4" class="center-cell" style="background-color:#f4f5f7; color: #718096;">Nenhum item retirado da consideração original.</td></tr>`;
+                htmlSobras = `<tr><td colspan="6" class="center-cell" style="background-color:#f4f5f7; color: #718096;">Nenhum item retirado da consideração original.</td></tr>`;
             } else {
                 htmlSobras += `<tr class="row-total">
-                    <td colspan="3" style="text-align: right;">Total de Sobras:</td>
+                    <td colspan="4" style="text-align: right;">Total de Sobras:</td>
                     <td class="center-cell" style="background-color:#e60000 !important;">- ${totalSobras} peças</td>
+                    <td class="center-cell" style="background-color:#e60000 !important;">- R$ ${formatarMoeda(totalSobrasValor)}</td>
                 </tr>`;
             }
             document.getElementById('dash-tbody-sobras').innerHTML = htmlSobras;
@@ -1872,7 +1878,6 @@
                     }];
 
                     subItensToProcess.forEach(sub => {
-                        // NOVO: Se a caixa foi 100% esvaziada, não exporta pro excel
                         if(sub.qtd <= 0) return; 
 
                         const linhaObj = {
@@ -1958,7 +1963,6 @@
                 }];
 
                 subItensToProcess.forEach(sub => {
-                    // NOVO: Se a caixa foi 100% esvaziada, não exporta pro excel
                     if(sub.qtd <= 0) return; 
 
                     const linhaObj = {
