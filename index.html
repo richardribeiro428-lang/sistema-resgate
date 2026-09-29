@@ -180,6 +180,10 @@
         
         .btn-exportar-setor { background:#0ea5e9; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
         .btn-exportar-setor:hover { background:#0284c7; }
+        
+        /* NOVO BOTÃO DE AJUSTE AUTOMÁTICO */
+        .btn-ajuste-qtd { background:#059669; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
+        .btn-ajuste-qtd:hover { background:#047857; }
 
         .lista-itens { list-style: none; padding: 0; margin: 0; max-height: 500px; overflow-y: auto; padding-right: 5px;}
         .lista-itens::-webkit-scrollbar { width: 8px; }
@@ -391,6 +395,13 @@
                             <button class="btn-devolver-visiveis" onclick="marcarDevolvidosVisiveis(true)">📦 Devolver Visíveis</button>
                             <button class="btn-desfazer-devolucao" onclick="marcarDevolvidosVisiveis(false)">Desfazer Devolução</button>
                             <button class="btn-exportar-setor" onclick="exportarExcelSetor()">📥 Exportar Setor</button>
+                            
+                            <!-- NOVO BOTÃO DE AJUSTAR QTD EM LOTE -->
+                            <label for="excel-ajuste-qtd" class="btn-ajuste-qtd">
+                                ⚙️ Ajustar Qtds em Lote
+                            </label>
+                            <input type="file" id="excel-ajuste-qtd" accept=".xlsx, .xls, .xlsm" style="display:none;" />
+
                         </div>
                     </div>
                 </div>
@@ -731,6 +742,116 @@
                 }
                 
                 document.getElementById('excel-update-loc').value = ''; 
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        // ==========================================
+        // AJUSTE DE QUANTIDADES EM LOTE (NOVO)
+        // ==========================================
+        document.getElementById('excel-ajuste-qtd').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const posicao = window.posicaoAtual;
+            if (!posicao) return;
+
+            if (!confirm(`ATENÇÃO: Você está prestes a ajustar automaticamente as quantidades do setor ${posicao}.\n\nItens que NÃO estiverem na planilha serão ZERADOS e irão para as Sobras.\n\nDeseja continuar?`)) {
+                e.target.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const sheetName = workbook.SheetNames[0]; 
+                const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {header: 1}); 
+                
+                let mapaAjuste = {};
+                for (let i = 1; i < jsonData.length; i++) {
+                    const linha = jsonData[i];
+                    if (linha && linha.length >= 2) {
+                        const sku = String(linha[0] || '').trim().toUpperCase();
+                        let qtdStr = String(linha[1] || '0').trim();
+                        const qtd = parseFloat(qtdStr.replace(',', '.'));
+                        
+                        if (sku !== '' && !isNaN(qtd)) {
+                            mapaAjuste[sku] = qtd;
+                        }
+                    }
+                }
+
+                let skusNoSetor = new Set();
+                window.dadosResgates[posicao].forEach(item => skusNoSetor.add(item.item.toUpperCase()));
+
+                let atualizados = 0;
+                skusNoSetor.forEach(sku => {
+                    let novoTotal = mapaAjuste[sku];
+                    // Se o item do sistema não está na planilha de ajuste, assume quantidade 0
+                    if (novoTotal === undefined) novoTotal = 0; 
+
+                    let somaOriginal = 0;
+                    let parentItems = [];
+                    let allSubItens = [];
+
+                    // Captura todas as caixas deste SKU em todos os destinos na posição atual
+                    window.dadosResgates[posicao].forEach(itemObj => {
+                        if (itemObj.item.toUpperCase() === sku) {
+                            parentItems.push(itemObj);
+                            itemObj.subItens.forEach(sub => {
+                                allSubItens.push(sub);
+                                somaOriginal += sub.qtdOriginal;
+                            });
+                        }
+                    });
+
+                    // Limita ao máximo original
+                    if (novoTotal > somaOriginal) {
+                        novoTotal = somaOriginal;
+                    }
+
+                    let totalARemover = somaOriginal - novoTotal;
+
+                    // Se precisa remover alguma peça
+                    if (totalARemover >= 0 && somaOriginal > 0) {
+                        // De baixo pra cima, igual na edição manual
+                        for (let i = allSubItens.length - 1; i >= 0; i--) {
+                            let sub = allSubItens[i];
+                            if (totalARemover >= sub.qtdOriginal) {
+                                sub.qtd = 0;
+                                sub.valorTotal = 0;
+                                totalARemover -= sub.qtdOriginal;
+                            } else if (totalARemover > 0) {
+                                sub.qtd = sub.qtdOriginal - totalARemover;
+                                sub.valorTotal = (sub.qtd / sub.qtdOriginal) * sub.valorOriginal;
+                                totalARemover = 0;
+                            } else {
+                                sub.qtd = sub.qtdOriginal;
+                                sub.valorTotal = sub.valorOriginal;
+                            }
+                        }
+
+                        // Atualiza a tela agrupada (pai)
+                        parentItems.forEach(itemObj => {
+                            let novoTotalQtd = 0;
+                            let novoTotalValor = 0;
+                            itemObj.subItens.forEach(sub => {
+                                novoTotalQtd += sub.qtd;
+                                novoTotalValor += sub.valorTotal;
+                            });
+                            itemObj.qtd = novoTotalQtd;
+                            itemObj.valorTotal = novoTotalValor;
+                        });
+                        atualizados++;
+                    }
+                });
+                
+                salvarEstado();
+                renderizarListaItens();
+                alert(`Ajuste em lote concluído com sucesso no setor ${posicao}!\nAs diferenças (sobras e zerados) foram enviadas para o Dashboard de Sobras.`);
+                
+                document.getElementById('excel-ajuste-qtd').value = ''; 
             };
             reader.readAsArrayBuffer(file);
         });
@@ -1180,28 +1301,22 @@
                         return;
                     }
 
-                    // A mágica acontece aqui: calcular quanto precisa ser retirado
                     let totalARemover = somaOriginal - novoTotal;
-
                     let novoTotalQtd = 0;
                     let novoTotalValor = 0;
 
-                    // O loop roda de trás para frente (da caixa de baixo para a caixa de cima)
                     for (let i = itemObj.subItens.length - 1; i >= 0; i--) {
                         let sub = itemObj.subItens[i];
                         
                         if (totalARemover >= sub.qtdOriginal) {
-                            // Se precisa retirar 50 e a caixa só tem 40, tira tudo (zera a caixa)
                             sub.qtd = 0;
                             sub.valorTotal = 0;
-                            totalARemover -= sub.qtdOriginal; // Sobram 10 pra tirar da próxima caixa acima
+                            totalARemover -= sub.qtdOriginal; 
                         } else if (totalARemover > 0) {
-                            // Se precisa retirar 10 e a caixa tem 40, tira só os 10 e para de descontar
                             sub.qtd = sub.qtdOriginal - totalARemover;
                             sub.valorTotal = (sub.qtd / sub.qtdOriginal) * sub.valorOriginal;
                             totalARemover = 0; 
                         } else {
-                            // Se não tem mais nada pra retirar, a caixa volta/fica com o valor cheio original
                             sub.qtd = sub.qtdOriginal;
                             sub.valorTotal = sub.valorOriginal;
                         }
@@ -1210,14 +1325,12 @@
                         novoTotalValor += sub.valorTotal;
                     }
 
-                    // Atualiza o pai (que é o que aparece na tela)
                     itemObj.qtd = novoTotalQtd;
                     itemObj.valorTotal = novoTotalValor;
 
                     salvarEstado();
                     renderizarListaItens();
                     
-                    // Aviso sutil
                     if(somaOriginal - novoTotal > 0) {
                         alert(`O sistema retirou ${somaOriginal - novoTotal} peça(s) das últimas caixas.\nVocê pode conferir o histórico disso na aba "Sobras de Consideração" no Dashboard!`);
                     }
@@ -1633,7 +1746,7 @@
             let htmlTbody = '';
             let htmlSobras = ''; 
             let totalSobras = 0; 
-            let totalSobrasValor = 0; // NOVO
+            let totalSobrasValor = 0; 
             let somaGeralValor = 0;
             let totalPecasGeral = 0;
             let totalItensConcluidosGeral = 0;
@@ -1680,7 +1793,7 @@
                         if(i.subItens) {
                             i.subItens.forEach(sub => {
                                 const retirada = sub.qtdOriginal - sub.qtd;
-                                const valorRetirado = sub.valorOriginal - sub.valorTotal; // NOVO
+                                const valorRetirado = sub.valorOriginal - sub.valorTotal; 
 
                                 if(retirada > 0) {
                                     htmlSobras += `<tr>
@@ -1692,7 +1805,7 @@
                                         <td class="center-cell" style="color: #fff; background-color:#e60000; font-weight: bold;">- R$ ${formatarMoeda(valorRetirado)}</td>
                                     </tr>`;
                                     totalSobras += retirada;
-                                    totalSobrasValor += valorRetirado; // NOVO
+                                    totalSobrasValor += valorRetirado; 
                                 }
                             });
                         }
