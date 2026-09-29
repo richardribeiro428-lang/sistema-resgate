@@ -143,7 +143,7 @@
         .filtro-item { display: flex; align-items: center; gap: 5px; }
         .filtro-item label { font-weight: 700; color: #2b6cb0; font-size: 0.85rem; }
         
-        /* Dropdown Multi-Select (Padronizado) */
+        /* Dropdown Multi-Select */
         .dropdown-check-list { position: relative; display: inline-block; min-width: 170px; flex-grow: 1; max-width: 250px;}
         .dropdown-check-list .anchor { padding: 6px 10px; border-radius: 6px; border: 1px solid #90cdf4; cursor: pointer; background: #fff; color: #2c5282; font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; user-select: none; }
         .dropdown-check-list .items { display: none; position: absolute; top: 100%; left: 0; background: #fff; border: 1px solid #90cdf4; border-radius: 6px; max-height: 300px; overflow-y: auto; width: 100%; z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 0; margin: 5px 0 0 0; }
@@ -160,7 +160,6 @@
         .btn-desfazer-todos { background-color: #718096; color: white; border: none; padding: 8px 13px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600; transition: background 0.2s; }
         .btn-desfazer-todos:hover { background-color: #4a5568; }
 
-        /* BOTÃO LIMPAR FILTROS DESTACADO */
         .btn-limpar-filtros { background-color: #fff; color: #d97706; border: 1px solid #d97706; padding: 8px 13px; border-radius: 7px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 0.82rem; transition: background 0.2s; }
         .btn-limpar-filtros:hover { background-color: #fef3c7; }
 
@@ -179,7 +178,6 @@
         .btn-desfazer-devolucao { background:#fde68a; color:#92400e; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
         .btn-desfazer-devolucao:hover { background:#fcd34d; }
         
-        /* NOVO BOTÃO DE EXPORTAR SETOR */
         .btn-exportar-setor { background:#0ea5e9; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
         .btn-exportar-setor:hover { background:#0284c7; }
 
@@ -204,7 +202,6 @@
         .destino-col-label { display:inline-block; font-size:0.72rem; color:#a0aec0; font-weight:700; text-transform:uppercase; margin-bottom:2px; }
         .destino-copiavel { display:block; color:#5b21b6; font-weight:800; font-size:0.95rem; user-select:text; }
         
-        /* ÍCONE DE LÁPIS PARA EDIÇÃO */
         .edit-icon { cursor: pointer; font-size: 0.8rem; margin-left: 5px; opacity: 0.6; transition: opacity 0.2s; }
         .edit-icon:hover { opacity: 1; }
         
@@ -222,7 +219,6 @@
         .btn-novo-resgate:hover { background:#c90000; }
         .modo-historico { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; padding:9px 12px; border-radius:7px; font-size:0.82rem; font-weight:700; margin-bottom:12px; }
 
-        /* Botões individuais do item */
         .btn-falta { background-color: #ffe5e5; color: #e60000; border: 1px solid #ffcccc; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;}
         .btn-falta:hover { background-color: #e60000; color: white; }
 
@@ -249,7 +245,6 @@
         .prog-bg { flex-grow: 1; height: 8px; background-color: rgba(255,255,255,0.3); border-radius: 4px; overflow: hidden; }
         .prog-fill { height: 100%; background-color: #00ff66; transition: width 0.3s; }
         
-        /* GRÁFICOS GRANDES E VERTICAIS */
         .charts-wrapper { display: none; flex-direction: column; gap: 30px; width: 100%; padding-bottom: 30px; }
         .chart-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; width: 100%; display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02);}
         .chart-box h4 { margin: 0 0 15px 0; color: #2d3748; font-size: 1.2rem; }
@@ -444,7 +439,6 @@
         let graficoItens = null;
         let graficoFinanceiro = null;
 
-        // Variavel global para alimentar os graficos
         window.dashDataChart = { labels: [], concluidas: [], pendentes: [], devolvidas: [], naoDevolvidas: [] };
 
         // ============================================================
@@ -760,7 +754,8 @@
                         let valorTotal = parseFloat(linha[pos.indexValor]);
                         if (isNaN(valorTotal)) valorTotal = 0;
 
-                        const chaveUnica = `${item.toUpperCase()}|${destino.toUpperCase()}|${validacao.toUpperCase()}|${locacaoAntiga.toUpperCase()}|${numCaixa.toUpperCase()}`;
+                        // A CHAVE ÚNICA PARA O AGRUPAMENTO NA UI
+                        const chaveUnica = `${item.toUpperCase()}|${destino.toUpperCase()}|${validacao.toUpperCase()}`;
                         
                         const itemExistente = window.dadosResgates[pos.nome].find(i => i.chaveUnica === chaveUnica);
 
@@ -777,6 +772,16 @@
                                 lotesAtuais.push(lote);
                                 itemExistente.lote = lotesAtuais.join(' / ');
                             }
+                            
+                            // Adiciona aos subitens para exportação separada
+                            itemExistente.subItens.push({
+                                locacaoAntiga: locacaoAntiga,
+                                numCaixa: numCaixa,
+                                qtd: qtdResgate,
+                                valorTotal: valorTotal,
+                                loteOriginal: lote
+                            });
+
                         } else {
                             window.dadosResgates[pos.nome].push({
                                 chaveUnica: chaveUnica,
@@ -789,42 +794,32 @@
                                 checado: false,
                                 validacao: validacao,
                                 indisponivel: false,
-                                locacaoAntiga: locacaoAntiga,
-                                numCaixa: numCaixa,
-                                devolvido: false
+                                devolvido: false,
+                                subItens: [{
+                                    locacaoAntiga: locacaoAntiga,
+                                    numCaixa: numCaixa,
+                                    qtd: qtdResgate,
+                                    valorTotal: valorTotal,
+                                    loteOriginal: lote
+                                }]
                             });
                         }
                     }
                 });
             }
 
-            // --- NOVA REGRA DE ORDENAÇÃO: LOCAÇÃO ANTIGA > N° CX > SKU ---
+            // Ordenação para exibição na UI
             mapeamentoColunas.forEach(pos => {
                 window.dadosResgates[pos.nome].sort((a, b) => {
-                    // 1º Critério: LOCAÇÃO ANTIGA (Alfabético)
-                    const locA = String(a.locacaoAntiga || '').toUpperCase();
-                    const locB = String(b.locacaoAntiga || '').toUpperCase();
-                    if (locA < locB) return -1;
-                    if (locA > locB) return 1;
+                    const destA = String(a.destino).toUpperCase();
+                    const destB = String(b.destino).toUpperCase();
+                    if (destA < destB) return -1;
+                    if (destA > destB) return 1;
                     
-                    // 2º Critério: N° CX (Numérico)
-                    const numCxA = parseFloat(a.numCaixa) || 0;
-                    const numCxB = parseFloat(b.numCaixa) || 0;
-                    if (numCxA < numCxB) return -1;
-                    if (numCxA > numCxB) return 1;
-
-                    // Se empatar ou for texto puro, tenta desempatar o CX por string
-                    const strCxA = String(a.numCaixa || '').toUpperCase();
-                    const strCxB = String(b.numCaixa || '').toUpperCase();
-                    if (strCxA < strCxB) return -1;
-                    if (strCxA > strCxB) return 1;
-                    
-                    // 3º Critério: ITEM/SKU
-                    const itemA = String(a.item || '').toUpperCase();
-                    const itemB = String(b.item || '').toUpperCase();
+                    const itemA = String(a.item).toUpperCase();
+                    const itemB = String(b.item).toUpperCase();
                     if (itemA < itemB) return -1;
                     if (itemA > itemB) return 1;
-                    
                     return 0;
                 });
             });
@@ -1684,7 +1679,7 @@
         });
 
         // ==========================================
-        // EXPORTAÇÕES EXCEL (Com formatações corrigidas)
+        // EXPORTAÇÕES EXCEL (Com formatações e Ordenação)
         // ==========================================
         
         // Função para transformar strings puramente numéricas em números de verdade para o Excel
@@ -1700,60 +1695,105 @@
             return valor;
         }
 
+        // Função de Ordenação Central para o Excel
+        function ordenarDadosExportacao(dadosExportacao) {
+            dadosExportacao.sort((a, b) => {
+                // 1º Critério: LOCAÇÃO ANTIGA
+                const locA = String(a["LOCAÇÃO ANTIGA"] || '').toUpperCase();
+                const locB = String(b["LOCAÇÃO ANTIGA"] || '').toUpperCase();
+                if (locA < locB) return -1;
+                if (locA > locB) return 1;
+                
+                // 2º Critério: N° CX
+                const numCxA = parseFloat(a["N° CX"]) || 0;
+                const numCxB = parseFloat(b["N° CX"]) || 0;
+                if (numCxA < numCxB) return -1;
+                if (numCxA > numCxB) return 1;
+                
+                // Se houver texto na CX, desempata alfabeticamente
+                const strCxA = String(a["N° CX"] || '').toUpperCase();
+                const strCxB = String(b["N° CX"] || '').toUpperCase();
+                if (strCxA < strCxB) return -1;
+                if (strCxA > strCxB) return 1;
+                
+                // 3º Critério: SKU
+                const itemA = String(a["SKU"] || '').toUpperCase();
+                const itemB = String(b["SKU"] || '').toUpperCase();
+                if (itemA < itemB) return -1;
+                if (itemA > itemB) return 1;
+                
+                return 0;
+            });
+        }
+
         // EXPORTAÇÃO GLOBAL DE TODOS OS SETORES
         function exportarExcel() {
-            const dadosExportacao = [];
-            const linhasVermelhas = [];
-            let rowIndex = 0; // Header é a linha 0
+            let dadosExportacao = [];
             
             mapeamentoColunas.forEach(pos => {
                 const itens = window.dadosResgates[pos.nome];
 
                 itens.forEach(item => {
-                    rowIndex++;
                     const txtDevolvido = item.devolvido ? 'Já Devolvido' : 'Não Devolvido';
                     
-                    // A ordem das chaves neste objeto dita a ordem exata das colunas no Excel gerado
-                    const linhaObj = {
-                        "LOCAÇÃO ANTIGA": item.locacaoAntiga,
-                        "SKU": tratarDadoNumerico(item.item),
-                        "QUANTIDADE RESGATADA": item.qtd,
-                        "LOTE": item.lote,
-                        "N° CX": tratarDadoNumerico(item.numCaixa),
-                        "DESTINO": item.destino,
-                        "QUAL RESGATE": pos.nome,
-                        "LOC. FIXA": item.locFixa ? item.locFixa : "-",
-                        "VALIDAÇÃO QUALIDADE GB": item.validacao,
-                        "VALOR": item.valorTotal, // MANDAMOS O NÚMERO CRU AQUI (para formatar depois)
-                        "STATUS (NO SISTEMA)": item.indisponivel ? "Indisponível / Falta" : (item.checado ? "Concluído" : "Pendente"),
-                        "JÁ DEVOLVIDO?": txtDevolvido 
-                    };
-                    dadosExportacao.push(linhaObj);
-                    
-                    if (item.indisponivel) linhasVermelhas.push(rowIndex);
+                    // Se estiver carregando histórico antigo sem subItens
+                    const subItensToProcess = item.subItens || [{
+                        locacaoAntiga: item.locacaoAntiga || "-",
+                        numCaixa: item.numCaixa || "-",
+                        qtd: item.qtd,
+                        valorTotal: item.valorTotal,
+                        loteOriginal: item.lote
+                    }];
+
+                    subItensToProcess.forEach(sub => {
+                        const linhaObj = {
+                            "LOCAÇÃO ANTIGA": sub.locacaoAntiga,
+                            "SKU": tratarDadoNumerico(item.item),
+                            "QUANTIDADE RESGATADA": sub.qtd,
+                            "LOTE": sub.loteOriginal, // Lote original do subitem
+                            "N° CX": tratarDadoNumerico(sub.numCaixa),
+                            "DESTINO": item.destino,
+                            "QUAL RESGATE": pos.nome,
+                            "LOC. FIXA": item.locFixa ? item.locFixa : "-",
+                            "VALIDAÇÃO QUALIDADE GB": item.validacao,
+                            "VALOR": sub.valorTotal, 
+                            "STATUS (NO SISTEMA)": item.indisponivel ? "Indisponível / Falta" : (item.checado ? "Concluído" : "Pendente"),
+                            "JÁ DEVOLVIDO?": txtDevolvido,
+                            "_indisponivel": item.indisponivel // flag temporária
+                        };
+                        dadosExportacao.push(linhaObj);
+                    });
                 });
+            });
+
+            // Aplica a ordenação EXATA antes de jogar no Excel
+            ordenarDadosExportacao(dadosExportacao);
+
+            const linhasVermelhas = [];
+            // Remove a flag temporária e descobre onde estão as linhas vermelhas agora
+            dadosExportacao.forEach((linha, idx) => {
+                if (linha._indisponivel) {
+                    linhasVermelhas.push(idx + 1); // +1 pq linha 0 é o cabeçalho
+                }
+                delete linha._indisponivel;
             });
 
             const worksheet = XLSX.utils.json_to_sheet(dadosExportacao);
             const range = XLSX.utils.decode_range(worksheet['!ref']);
             
-            // Loop para aplicar as formatações em cada célula
             for(let R = range.s.r; R <= range.e.r; R++) {
-                // APLICANDO MOEDA: Ignora o cabeçalho (R=0) e formata a coluna 'VALOR' (que agora é a coluna J, índice 9)
                 if (R > 0) {
-                    const cellValor = worksheet[XLSX.utils.encode_cell({r: R, c: 9})];
+                    const cellValor = worksheet[XLSX.utils.encode_cell({r: R, c: 9})]; // Coluna J (VALOR)
                     if(cellValor) {
-                        cellValor.t = 'n'; // Garante que é tratado como número
-                        cellValor.z = '"R$ "#,##0.00'; // Formato de Real (R$) do Excel
+                        cellValor.t = 'n'; 
+                        cellValor.z = '"R$ "#,##0.00'; 
                     }
                 }
 
-                // APLICANDO COR VERMELHA para indisponíveis
                 if (linhasVermelhas.includes(R)) {
                     for(let C = range.s.c; C <= range.e.c; C++) {
                         const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
                         if(!worksheet[cellAddress]) continue;
-                        
                         worksheet[cellAddress].s = {
                             fill: { fgColor: { rgb: "FFFF0000" } }, 
                             font: { color: { rgb: "FFFFFFFF" }, bold: true } 
@@ -1772,38 +1812,54 @@
             const posicao = window.posicaoAtual;
             if (!posicao) return;
             
-            const dadosExportacao = [];
-            const linhasVermelhas = [];
-            let rowIndex = 0; 
-            
             const itens = window.dadosResgates[posicao] || [];
             if(itens.length === 0) {
                 alert("Não há itens neste setor para exportar.");
                 return;
             }
 
+            let dadosExportacao = [];
+
             itens.forEach(item => {
-                rowIndex++;
                 const txtDevolvido = item.devolvido ? 'Já Devolvido' : 'Não Devolvido';
                 
-                const linhaObj = {
-                    "LOCAÇÃO ANTIGA": item.locacaoAntiga,
-                    "SKU": tratarDadoNumerico(item.item),
-                    "QUANTIDADE RESGATADA": item.qtd,
-                    "LOTE": item.lote,
-                    "N° CX": tratarDadoNumerico(item.numCaixa),
-                    "DESTINO": item.destino,
-                    "QUAL RESGATE": posicao,
-                    "LOC. FIXA": item.locFixa ? item.locFixa : "-",
-                    "VALIDAÇÃO QUALIDADE GB": item.validacao,
-                    "VALOR": item.valorTotal, 
-                    "STATUS (NO SISTEMA)": item.indisponivel ? "Indisponível / Falta" : (item.checado ? "Concluído" : "Pendente"),
-                    "JÁ DEVOLVIDO?": txtDevolvido 
-                };
-                
-                dadosExportacao.push(linhaObj);
-                
-                if (item.indisponivel) linhasVermelhas.push(rowIndex);
+                const subItensToProcess = item.subItens || [{
+                    locacaoAntiga: item.locacaoAntiga || "-",
+                    numCaixa: item.numCaixa || "-",
+                    qtd: item.qtd,
+                    valorTotal: item.valorTotal,
+                    loteOriginal: item.lote
+                }];
+
+                subItensToProcess.forEach(sub => {
+                    const linhaObj = {
+                        "LOCAÇÃO ANTIGA": sub.locacaoAntiga,
+                        "SKU": tratarDadoNumerico(item.item),
+                        "QUANTIDADE RESGATADA": sub.qtd,
+                        "LOTE": sub.loteOriginal,
+                        "N° CX": tratarDadoNumerico(sub.numCaixa),
+                        "DESTINO": item.destino,
+                        "QUAL RESGATE": posicao,
+                        "LOC. FIXA": item.locFixa ? item.locFixa : "-",
+                        "VALIDAÇÃO QUALIDADE GB": item.validacao,
+                        "VALOR": sub.valorTotal, 
+                        "STATUS (NO SISTEMA)": item.indisponivel ? "Indisponível / Falta" : (item.checado ? "Concluído" : "Pendente"),
+                        "JÁ DEVOLVIDO?": txtDevolvido,
+                        "_indisponivel": item.indisponivel 
+                    };
+                    dadosExportacao.push(linhaObj);
+                });
+            });
+
+            // Aplica a ordenação EXATA antes de jogar no Excel
+            ordenarDadosExportacao(dadosExportacao);
+
+            const linhasVermelhas = [];
+            dadosExportacao.forEach((linha, idx) => {
+                if (linha._indisponivel) {
+                    linhasVermelhas.push(idx + 1); 
+                }
+                delete linha._indisponivel;
             });
 
             const worksheet = XLSX.utils.json_to_sheet(dadosExportacao);
@@ -1811,7 +1867,7 @@
             
             for(let R = range.s.r; R <= range.e.r; R++) {
                 if (R > 0) {
-                    const cellValor = worksheet[XLSX.utils.encode_cell({r: R, c: 9})];
+                    const cellValor = worksheet[XLSX.utils.encode_cell({r: R, c: 9})]; // Coluna J (VALOR)
                     if(cellValor) {
                         cellValor.t = 'n'; 
                         cellValor.z = '"R$ "#,##0.00'; 
