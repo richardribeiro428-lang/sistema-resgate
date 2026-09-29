@@ -130,8 +130,11 @@
         .btn-voltar:hover { color: #2d3748; }
         
         .lista-header { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;}
-        .header-title-row { display: flex; justify-content: space-between; align-items: center; }
-        .header-title-row h3 { margin: 0; color: #001529; font-size: 1.5rem;}
+        
+        /* LINHA DE TÍTULO E ESTATÍSTICAS REFORMULADA */
+        .header-title-row { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 5px; }
+        .header-title-row h3 { margin: 0; color: #001529; font-size: 1.6rem;}
+        #detalhes-stats { color: #2c5282; font-size: 0.9rem; font-weight: 700; background: #ebf8ff; padding: 6px 12px; border-radius: 6px; border: 1px solid #bee3f8; display: inline-block; }
         
         /* Abas Internas */
         .detalhes-tabs { display: flex; gap: 15px; border-bottom: 2px solid #e2e8f0; margin-bottom: 15px; }
@@ -159,7 +162,6 @@
         .btn-selecionar-todos:hover { background-color: #2b6cb0; }
         .btn-desfazer-todos { background-color: #718096; color: white; border: none; padding: 8px 13px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600; transition: background 0.2s; }
         .btn-desfazer-todos:hover { background-color: #4a5568; }
-
         .btn-limpar-filtros { background-color: #fff; color: #d97706; border: 1px solid #d97706; padding: 8px 13px; border-radius: 7px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 0.82rem; transition: background 0.2s; }
         .btn-limpar-filtros:hover { background-color: #fef3c7; }
 
@@ -181,7 +183,6 @@
         .btn-exportar-setor { background:#0ea5e9; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
         .btn-exportar-setor:hover { background:#0284c7; }
         
-        /* NOVO BOTÃO DE AJUSTE AUTOMÁTICO */
         .btn-ajuste-qtd { background:#059669; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; display: none; }
         .btn-ajuste-qtd:hover { background:#047857; }
 
@@ -206,7 +207,6 @@
         .destino-col-label { display:inline-block; font-size:0.72rem; color:#a0aec0; font-weight:700; text-transform:uppercase; margin-bottom:2px; }
         .destino-copiavel { display:block; color:#5b21b6; font-weight:800; font-size:0.95rem; user-select:text; }
         
-        /* ÍCONES PARA EDIÇÃO */
         .edit-icon { cursor: pointer; font-size: 0.8rem; margin-left: 5px; opacity: 0.6; transition: opacity 0.2s; }
         .edit-icon:hover { opacity: 1; }
         .edit-icon-qtd { cursor: pointer; font-size: 0.75rem; margin-left: 6px; color: white; opacity: 0.7; transition: opacity 0.2s; }
@@ -226,7 +226,6 @@
         .btn-novo-resgate:hover { background:#c90000; }
         .modo-historico { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; padding:9px 12px; border-radius:7px; font-size:0.82rem; font-weight:700; margin-bottom:12px; }
 
-        /* Botões individuais do item */
         .btn-falta { background-color: #ffe5e5; color: #e60000; border: 1px solid #ffcccc; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;}
         .btn-falta:hover { background-color: #e60000; color: white; }
 
@@ -315,7 +314,7 @@
                 </div>
 
                 <button type="button" onclick="limparDadosSalvos()" style="margin-top:20px; background:#fff; color:#e60000; border:1px solid #e60000; padding:10px 16px; border-radius:8px; cursor:pointer; font-family:inherit; font-weight:600;">
-                    🗑️ Limpar dados salvos na nuvem
+                    🗑️️ Limpar dados salvos na nuvem
                 </button>
             </div>
 
@@ -326,7 +325,7 @@
                 <div class="lista-header">
                     <div class="header-title-row">
                         <h3 id="detalhes-titulo">Nome da Posição</h3>
-                        <span id="detalhes-stats" style="color: #718096; font-size: 0.9rem; font-weight: 600;"></span>
+                        <span id="detalhes-stats"></span>
                     </div>
 
                     <!-- Abas Pendentes / Resgatados -->
@@ -538,7 +537,7 @@
                 if (error) throw error;
 
                 if (!data || !data.dados) {
-                    atualizarStatusNuvem('☁️️ Banco conectado — nenhum dado salvo');
+                    atualizarStatusNuvem('☁ Banco conectado — nenhum dado salvo');
                     return false;
                 }
 
@@ -550,7 +549,7 @@
 
                 window.dadosResgates = estado.dadosResgates;
 
-                // Failsafe: Se os dados vierem sem "qtdOriginal", a gente preenche para não quebrar o dash
+                // Failsafe
                 Object.keys(window.dadosResgates).forEach(pos => {
                     window.dadosResgates[pos].forEach(item => {
                         if(item.subItens) {
@@ -615,7 +614,7 @@
                 document.getElementById('upload-text').innerText = "Adicionar planilha de ganhos";
                 document.getElementById('subtitle-text').innerText = "Faça o upload da planilha para carregar os locais de resgate.";
 
-                atualizarStatusNuvem('☁️️ Banco vazio');
+                atualizarStatusNuvem('☁ Banco vazio');
                 alert('Dados da nuvem apagados com sucesso.');
             } catch (erro) {
                 console.error(erro);
@@ -1011,15 +1010,18 @@
                 const itensValidos = window.dadosResgates[pos.nome].filter(i => !i.indisponivel);
                 
                 if (itensValidos.length > 0) {
-                    const concluidos = itensValidos.filter(i => i.checado).length;
-                    const isConcluido = itensValidos.length === concluidos;
+                    // CÁLCULO ATUALIZADO: Ignora peças zeradas na contagem de concluídos para a tela principal
+                    const concluidos = itensValidos.filter(i => i.checado && i.qtd > 0).length;
+                    const totalAtivos = itensValidos.filter(i => i.qtd > 0).length;
+                    const isConcluido = (totalAtivos > 0 && totalAtivos === concluidos);
+                    
                     const card = document.createElement('div');
                     card.className = `card-pasta ${isConcluido ? 'concluido' : ''}`;
                     card.onclick = () => abrirPosicao(pos.nome); 
                     card.innerHTML = `
                         <div class="card-icon">${isConcluido ? '✔' : '📋'}</div>
                         <h4>${pos.nome}</h4>
-                        <p>${isConcluido ? 'Concluído' : `${concluidos} de ${itensValidos.length} resgatados`}</p>`;
+                        <p>${isConcluido ? 'Concluído' : `${concluidos} de ${totalAtivos} resgatados`}</p>`;
                     container.appendChild(card);
                 } else if (window.dadosResgates[pos.nome].length > 0) {
                     const card = document.createElement('div');
@@ -1086,6 +1088,7 @@
             
             const itensAba = itens.filter(itemObj => {
                 if (itemObj.indisponivel) return false;
+                if (itemObj.qtd <= 0) return false; // ESCONDE ZERADOS DOS DROPDOWNS
                 if (window.abaDetalhes === 'pendentes' && itemObj.checado) return false;
                 if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return false;
                 if (filtroDevolucao === 'Sim' && !itemObj.devolvido) return false;
@@ -1129,6 +1132,7 @@
             
             const itensAba = itens.filter(itemObj => {
                 if (itemObj.indisponivel) return false;
+                if (itemObj.qtd <= 0) return false; // ESCONDE ZERADOS
                 if (window.abaDetalhes === 'pendentes' && itemObj.checado) return false;
                 if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return false;
                 if (filtroDevolucao === 'Sim' && !itemObj.devolvido) return false;
@@ -1232,7 +1236,7 @@
             window.posicaoAtual = posicaoNome;
             window.abaDetalhes = 'pendentes'; 
 
-            // NOVO: Mostrar o botão de ajuste de lote APENAS na aba de Ganho
+            // Mostrar o botão de ajuste de lote APENAS na aba de Ganho
             const labelAjuste = document.getElementById('label-ajuste-qtd');
             if (labelAjuste) {
                 labelAjuste.style.display = (posicaoNome === 'Ganho' && !window.modoHistorico) ? 'inline-block' : 'none';
@@ -1366,6 +1370,7 @@
             const itens = window.dadosResgates[posicaoNome] || [];
             return itens.filter(itemObj => {
                 if (itemObj.indisponivel) return false;
+                if (itemObj.qtd <= 0) return false; // ESCONDE ZERADOS DA TELA
                 if (window.abaDetalhes === 'pendentes' && itemObj.checado) return false;
                 if (window.abaDetalhes === 'resgatados' && !itemObj.checado) return false;
                 if (skusSel.length > 0 && !skusSel.includes(itemObj.item)) return false;
@@ -1389,7 +1394,8 @@
             let countResgatados = 0;
 
             todosItens.forEach(i => {
-                if (!i.indisponivel) {
+                // Conta apenas itens que não estão zerados (pois os zerados foram "retirados")
+                if (!i.indisponivel && i.qtd > 0) {
                     if (i.checado) countResgatados++;
                     else countPendentes++;
                 }
@@ -1780,27 +1786,11 @@
                 let pecasDevolvidas = 0;
                 let pecasNaoDevolvidas = 0;
                 let setSKUsPosicao = new Set();
+                let countItensAtivos = 0; 
 
                 if(itensValidos.length > 0) {
                     itensValidos.forEach(i => {
-                        valorPosicao += i.valorTotal; 
-                        qtdPecasPosicao += i.qtd;
-                        setSKUsPosicao.add(i.item); 
-                        setSKUsGeral.add(i.item);
-
-                        if(i.checado) {
-                            linhasConcluidas++;
-                            pecasConcluidas += i.qtd;
-                        } else {
-                            pecasPendentes += i.qtd;
-                        }
-
-                        if(i.devolvido) {
-                            pecasDevolvidas += i.qtd;
-                        } else {
-                            pecasNaoDevolvidas += i.qtd;
-                        }
-
+                        
                         // CHECANDO SOBRAS E PREENCHENDO A TABELA
                         if(i.subItens) {
                             i.subItens.forEach(sub => {
@@ -1821,14 +1811,36 @@
                                 }
                             });
                         }
+
+                        // SOMA APENAS SE A QUANTIDADE > 0
+                        if (i.qtd > 0) {
+                            countItensAtivos++;
+                            valorPosicao += i.valorTotal; 
+                            qtdPecasPosicao += i.qtd;
+                            setSKUsPosicao.add(i.item); 
+                            setSKUsGeral.add(i.item);
+
+                            if(i.checado) {
+                                linhasConcluidas++;
+                                pecasConcluidas += i.qtd;
+                            } else {
+                                pecasPendentes += i.qtd;
+                            }
+
+                            if(i.devolvido) {
+                                pecasDevolvidas += i.qtd;
+                            } else {
+                                pecasNaoDevolvidas += i.qtd;
+                            }
+                        }
                     });
                     
                     somaGeralValor += valorPosicao;
                     totalPecasGeral += qtdPecasPosicao;
-                    totalLinhasGeral += itensValidos.length;
+                    totalLinhasGeral += countItensAtivos;
                     totalItensConcluidosGeral += linhasConcluidas;
                     
-                    const percentual = Math.round((linhasConcluidas / itensValidos.length) * 100);
+                    const percentual = countItensAtivos > 0 ? Math.round((linhasConcluidas / countItensAtivos) * 100) : 0;
                     
                     htmlTbody += `<tr>
                         <td>${pos.nome}</td>
@@ -2150,3 +2162,4 @@
     </script>
 </body>
 </html>
+```<ElicitationsGroup>
