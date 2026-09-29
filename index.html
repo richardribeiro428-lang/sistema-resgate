@@ -159,8 +159,6 @@
         .btn-selecionar-todos:hover { background-color: #2b6cb0; }
         .btn-desfazer-todos { background-color: #718096; color: white; border: none; padding: 8px 13px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600; transition: background 0.2s; }
         .btn-desfazer-todos:hover { background-color: #4a5568; }
-
-        /* BOTÃO LIMPAR FILTROS DESTACADO */
         .btn-limpar-filtros { background-color: #fff; color: #d97706; border: 1px solid #d97706; padding: 8px 13px; border-radius: 7px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 0.82rem; transition: background 0.2s; }
         .btn-limpar-filtros:hover { background-color: #fef3c7; }
 
@@ -231,7 +229,7 @@
         .btn-item-devolver:hover { background-color: #e2e8f0; }
         .btn-item-devolver.ativo { background-color: #d97706; color: white; border-color: #b45309; }
 
-        /* --- DASHBOARD --- */
+        /* --- DASHBOARD E SOBRAS --- */
         #view-dashboard { display: none; text-align: left; width: 100%; }
         
         .dash-tabs { display: flex; gap: 15px; border-bottom: 2px solid #e2e8f0; margin-bottom: 25px; }
@@ -539,6 +537,21 @@
                 }
 
                 window.dadosResgates = estado.dadosResgates;
+
+                // Failsafe: Se os dados vierem sem "qtdOriginal", a gente preenche para não quebrar o dash
+                Object.keys(window.dadosResgates).forEach(pos => {
+                    window.dadosResgates[pos].forEach(item => {
+                        if(item.subItens) {
+                            item.subItens.forEach(sub => {
+                                if (sub.qtdOriginal === undefined) {
+                                    sub.qtdOriginal = sub.qtd;
+                                    sub.valorOriginal = sub.valorTotal;
+                                }
+                            });
+                        }
+                    });
+                });
+
                 window.posicaoAtual = estado.posicaoAtual || '';
                 window.planilhaCarregada = estado.planilhaCarregada === true;
                 window.abaDetalhes = estado.abaDetalhes || 'pendentes';
@@ -779,12 +792,14 @@
                                 itemExistente.lote = lotesAtuais.join(' / ');
                             }
                             
-                            // Adiciona aos subitens para exportação separada e edição específica
+                            // Adiciona aos subitens para exportação e cálculo de sobras
                             itemExistente.subItens.push({
                                 locacaoAntiga: locacaoAntiga,
                                 numCaixa: numCaixa,
                                 qtd: qtdResgate,
+                                qtdOriginal: qtdResgate, // NOVO: Base para as sobras
                                 valorTotal: valorTotal,
+                                valorOriginal: valorTotal, // NOVO: Base para as sobras
                                 loteOriginal: lote
                             });
 
@@ -805,7 +820,9 @@
                                     locacaoAntiga: locacaoAntiga,
                                     numCaixa: numCaixa,
                                     qtd: qtdResgate,
+                                    qtdOriginal: qtdResgate, // NOVO
                                     valorTotal: valorTotal,
+                                    valorOriginal: valorTotal, // NOVO
                                     loteOriginal: lote
                                 }]
                             });
@@ -1142,85 +1159,71 @@
             }
         }
 
-        // NOVO: Função para editar a quantidade com suporte a caixas múltiplas (subItens)
+        // NOVO: Função para editar a quantidade de forma reversa entre as caixas agrupadas
         function editarQtd(posicaoNome, index) {
             if (window.modoHistorico) return;
             const itemObj = window.dadosResgates[posicaoNome][index];
             const atual = itemObj.qtd;
 
-            // Se o item for composto por mais de uma caixa, pergunta individualmente
-            if (itemObj.subItens && itemObj.subItens.length > 1) {
-                let novoTotalQtd = 0;
-                let novoTotalValor = 0;
-                let cancelou = false;
+            const novoStr = prompt(`Quantidade atual total na tela: ${atual}\n\nDigite a NOVA quantidade total que você deseja deixar neste item (ex: se era 97 e quer tirar 10, digite 87):`, atual);
+            
+            if (novoStr !== null && novoStr.trim() !== "") {
+                const novoTotal = parseFloat(novoStr);
                 
-                // Cópia temporária para não alterar dados se o usuário cancelar no meio
-                let subItensTemp = JSON.parse(JSON.stringify(itemObj.subItens));
-
-                alert(`Este item está dividido em ${subItensTemp.length} caixas diferentes.\nVamos ajustar a quantidade de cada uma individualmente.`);
-
-                for (let i = 0; i < subItensTemp.length; i++) {
-                    let sub = subItensTemp[i];
-                    let msg = `📦 CAIXA ${i + 1} de ${subItensTemp.length}\n` +
-                              `Locação: ${sub.locacaoAntiga} | Nº CX: ${sub.numCaixa} | Lote: ${sub.loteOriginal}\n\n` +
-                              `Quantidade atual nesta caixa: ${sub.qtd}\n` +
-                              `Digite a nova quantidade APENAS para esta caixa:`;
-                              
-                    let resp = prompt(msg, sub.qtd);
+                if (!isNaN(novoTotal) && novoTotal >= 0) {
                     
-                    if (resp === null) {
-                        cancelou = true;
-                        break;
-                    }
-                    
-                    let novaQtdCaixa = parseFloat(resp);
-                    if (isNaN(novaQtdCaixa) || novaQtdCaixa < 0) {
-                        alert("Valor inválido! Edição cancelada.");
-                        cancelou = true;
-                        break;
+                    let somaOriginal = 0;
+                    itemObj.subItens.forEach(sub => somaOriginal += sub.qtdOriginal);
+
+                    if(novoTotal > somaOriginal) {
+                        alert(`Erro! A quantidade não pode ser maior que o total original lido da planilha (${somaOriginal}). Se precisar aumentar, insira uma nova linha no Excel original.`);
+                        return;
                     }
 
-                    // Ajusta o valor financeiro da caixa baseado na proporção da nova quantidade
-                    let proporcao = sub.qtd > 0 ? (novaQtdCaixa / sub.qtd) : 0;
-                    sub.qtd = novaQtdCaixa;
-                    sub.valorTotal = sub.valorTotal * proporcao;
+                    // A mágica acontece aqui: calcular quanto precisa ser retirado
+                    let totalARemover = somaOriginal - novoTotal;
 
-                    novoTotalQtd += sub.qtd;
-                    novoTotalValor += sub.valorTotal;
-                }
+                    let novoTotalQtd = 0;
+                    let novoTotalValor = 0;
 
-                if (!cancelou) {
-                    itemObj.subItens = subItensTemp;
+                    // O loop roda de trás para frente (da caixa de baixo para a caixa de cima)
+                    for (let i = itemObj.subItens.length - 1; i >= 0; i--) {
+                        let sub = itemObj.subItens[i];
+                        
+                        if (totalARemover >= sub.qtdOriginal) {
+                            // Se precisa retirar 50 e a caixa só tem 40, tira tudo (zera a caixa)
+                            sub.qtd = 0;
+                            sub.valorTotal = 0;
+                            totalARemover -= sub.qtdOriginal; // Sobram 10 pra tirar da próxima caixa acima
+                        } else if (totalARemover > 0) {
+                            // Se precisa retirar 10 e a caixa tem 40, tira só os 10 e para de descontar
+                            sub.qtd = sub.qtdOriginal - totalARemover;
+                            sub.valorTotal = (sub.qtd / sub.qtdOriginal) * sub.valorOriginal;
+                            totalARemover = 0; 
+                        } else {
+                            // Se não tem mais nada pra retirar, a caixa volta/fica com o valor cheio original
+                            sub.qtd = sub.qtdOriginal;
+                            sub.valorTotal = sub.valorOriginal;
+                        }
+
+                        novoTotalQtd += sub.qtd;
+                        novoTotalValor += sub.valorTotal;
+                    }
+
+                    // Atualiza o pai (que é o que aparece na tela)
                     itemObj.qtd = novoTotalQtd;
                     itemObj.valorTotal = novoTotalValor;
-                    
+
                     salvarEstado();
                     renderizarListaItens();
-                }
-
-            } else {
-                // Se for só uma caixa, funciona como sempre: 1 pergunta direta
-                const novoStr = prompt(`Quantidade atual: ${atual}\nDigite a nova quantidade total para este item:`, atual);
-                
-                if (novoStr !== null && novoStr.trim() !== "") {
-                    const novo = parseFloat(novoStr);
                     
-                    if (!isNaN(novo) && novo >= 0) {
-                        const proporcao = atual > 0 ? (novo / atual) : 0;
-                        
-                        itemObj.qtd = novo;
-                        itemObj.valorTotal = itemObj.valorTotal * proporcao;
-
-                        if (itemObj.subItens && itemObj.subItens.length === 1) {
-                            itemObj.subItens[0].qtd = novo;
-                            itemObj.subItens[0].valorTotal = itemObj.subItens[0].valorTotal * proporcao;
-                        }
-                        
-                        salvarEstado();
-                        renderizarListaItens();
-                    } else {
-                        alert("Por favor, insira um número válido maior ou igual a zero.");
+                    // Aviso sutil
+                    if(somaOriginal - novoTotal > 0) {
+                        alert(`O sistema retirou ${somaOriginal - novoTotal} peça(s) das últimas caixas.\nVocê pode conferir o histórico disso na aba "Sobras de Consideração" no Dashboard!`);
                     }
+
+                } else {
+                    alert("Por favor, insira um número válido maior ou igual a zero.");
                 }
             }
         }
@@ -1568,24 +1571,32 @@
         function trocarVisaoDash(visao) {
             document.getElementById('dash-tab-tabela').classList.remove('active');
             document.getElementById('dash-tab-grafico').classList.remove('active');
+            document.getElementById('dash-tab-sobras').classList.remove('active'); // NOVO
+            
             document.getElementById('dash-view-tabela').style.display = 'none';
             document.getElementById('dash-view-grafico').style.display = 'none';
+            document.getElementById('dash-view-sobras').style.display = 'none'; // NOVO
 
             if(visao === 'tabela') {
                 document.getElementById('dash-tab-tabela').classList.add('active');
                 document.getElementById('dash-view-tabela').style.display = 'block';
-            } else {
+            } else if(visao === 'grafico') {
                 document.getElementById('dash-tab-grafico').classList.add('active');
                 document.getElementById('dash-view-grafico').style.display = 'flex';
                 desenharGraficos();
+            } else { // NOVO
+                document.getElementById('dash-tab-sobras').classList.add('active');
+                document.getElementById('dash-view-sobras').style.display = 'block';
             }
         }
 
         function renderizarDashboard() {
+            // ADICIONADO A 3ª ABA DE SOBRAS NO LAYOUT DO DASHBOARD
             let layoutDash = `
                 <div class="dash-tabs">
                     <button class="dash-tab-btn active" id="dash-tab-tabela" onclick="trocarVisaoDash('tabela')">Tabela de Dados</button>
                     <button class="dash-tab-btn" id="dash-tab-grafico" onclick="trocarVisaoDash('grafico')">Gráficos de Conclusão</button>
+                    <button class="dash-tab-btn" id="dash-tab-sobras" onclick="trocarVisaoDash('sobras')">Sobras de Consideração</button>
                 </div>
                 
                 <div id="dash-view-tabela">
@@ -1609,23 +1620,31 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- NOVA ABA: SOBRAS DE CONSIDERAÇÃO -->
+                <div id="dash-view-sobras" style="display: none;">
+                    <table class="dashboard-table">
+                        <thead><tr><th>Setor</th><th>Nº CX</th><th>SKU</th><th>Quantidade Retirada</th></tr></thead>
+                        <tbody id="dash-tbody-sobras"></tbody>
+                    </table>
+                </div>
             `;
             document.getElementById('dashboard-conteudo').innerHTML = layoutDash;
 
             let htmlTbody = '';
+            let htmlSobras = ''; // NOVO
+            let totalSobras = 0; // NOVO
             let somaGeralValor = 0;
             let totalPecasGeral = 0;
             let totalItensConcluidosGeral = 0;
             let totalLinhasGeral = 0;
             let setSKUsGeral = new Set();
 
-            // Limpa dados de gráficos
             window.dashDataChart = { labels: [], concluidas: [], pendentes: [], devolvidas: [], naoDevolvidas: [] };
 
             mapeamentoColunas.forEach(pos => {
                 const itensValidos = window.dadosResgates[pos.nome].filter(i => !i.indisponivel);
                 
-                // Popula os labels (eixos x) mesmo que não tenha itens para não desalinhar
                 window.dashDataChart.labels.push(pos.nome);
 
                 let valorPosicao = 0;
@@ -1656,6 +1675,22 @@
                         } else {
                             pecasNaoDevolvidas += i.qtd;
                         }
+
+                        // NOVO: CHECANDO SOBRAS E PREENCHENDO A TABELA
+                        if(i.subItens) {
+                            i.subItens.forEach(sub => {
+                                const retirada = sub.qtdOriginal - sub.qtd;
+                                if(retirada > 0) {
+                                    htmlSobras += `<tr>
+                                        <td>${pos.nome}</td>
+                                        <td class="center-cell">${sub.numCaixa}</td>
+                                        <td class="center-cell">${i.item}</td>
+                                        <td class="center-cell" style="color: #fff; background-color:#e60000; font-weight: bold;">- ${retirada} peças</td>
+                                    </tr>`;
+                                    totalSobras += retirada;
+                                }
+                            });
+                        }
                     });
                     
                     somaGeralValor += valorPosicao;
@@ -1679,14 +1714,13 @@
                     </tr>`;
                 }
                 
-                // Grava arrays pro grafico
                 window.dashDataChart.concluidas.push(pecasConcluidas);
                 window.dashDataChart.pendentes.push(pecasPendentes);
                 window.dashDataChart.devolvidas.push(pecasDevolvidas);
                 window.dashDataChart.naoDevolvidas.push(pecasNaoDevolvidas);
-
             });
 
+            // FECHAMENTO DA TABELA PRINCIPAL
             const percentualGeral = totalLinhasGeral > 0 ? Math.round((totalItensConcluidosGeral / totalLinhasGeral) * 100) : 0;
             htmlTbody += `<tr class="row-total">
                 <td>Total</td>
@@ -1700,8 +1734,18 @@
                     </div>
                 </td>
             </tr>`;
-
             document.getElementById('dash-tbody').innerHTML = htmlTbody;
+
+            // FECHAMENTO DA TABELA DE SOBRAS
+            if(htmlSobras === '') {
+                htmlSobras = `<tr><td colspan="4" class="center-cell" style="background-color:#f4f5f7; color: #718096;">Nenhum item retirado da consideração original.</td></tr>`;
+            } else {
+                htmlSobras += `<tr class="row-total">
+                    <td colspan="3" style="text-align: right;">Total de Sobras:</td>
+                    <td class="center-cell" style="background-color:#e60000 !important;">- ${totalSobras} peças</td>
+                </tr>`;
+            }
+            document.getElementById('dash-tbody-sobras').innerHTML = htmlSobras;
         }
 
         function desenharGraficos() {
@@ -1711,15 +1755,12 @@
             const ctxAndamento = document.getElementById('chartAndamento').getContext('2d');
             const ctxDevolucao = document.getElementById('chartDevolucao').getContext('2d');
 
-            // Lógica para limitar o eixo Y em caso de outliers extremos (ex: setor Ganho gigante)
             function calcularLimiteY(array1, array2) {
                 let totais = array1.map((v, i) => v + array2[i]);
                 let maximos = [...totais].sort((a,b) => b-a);
-                // Se existe um segundo valor e o primeiro é desproporcionalmente maior (ex: 4x maior)
                 if (maximos.length > 1 && maximos[1] > 0 && maximos[0] > (maximos[1] * 4)) {
-                    // Define o teto do gráfico para ser 1.5x o tamanho do SEGUNDO maior.
                     let limite = Math.ceil(maximos[1] * 1.5);
-                    return limite < 10 ? 10 : limite; // Pelo menos 10 para o gráfico não ficar espremido
+                    return limite < 10 ? 10 : limite; 
                 }
                 return undefined;
             }
@@ -1773,15 +1814,13 @@
         });
 
         // ==========================================
-        // EXPORTAÇÕES EXCEL (Com formatações e Ordenação)
+        // EXPORTAÇÕES EXCEL 
         // ==========================================
         
-        // Função para transformar strings puramente numéricas em números de verdade para o Excel
         function tratarDadoNumerico(valor) {
             if (typeof valor === 'string') {
                 const limpo = valor.trim();
                 if (limpo === '' || limpo === '-') return limpo;
-                // Se for composto apenas por números, transforma em Inteiro
                 if (/^\d+$/.test(limpo)) {
                     return Number(limpo);
                 }
@@ -1789,28 +1828,23 @@
             return valor;
         }
 
-        // Função de Ordenação Central para o Excel
         function ordenarDadosExportacao(dadosExportacao) {
             dadosExportacao.sort((a, b) => {
-                // 1º Critério: LOCAÇÃO ANTIGA
                 const locA = String(a["LOCAÇÃO ANTIGA"] || '').toUpperCase();
                 const locB = String(b["LOCAÇÃO ANTIGA"] || '').toUpperCase();
                 if (locA < locB) return -1;
                 if (locA > locB) return 1;
                 
-                // 2º Critério: N° CX
                 const numCxA = parseFloat(a["N° CX"]) || 0;
                 const numCxB = parseFloat(b["N° CX"]) || 0;
                 if (numCxA < numCxB) return -1;
                 if (numCxA > numCxB) return 1;
                 
-                // Se houver texto na CX, desempata alfabeticamente
                 const strCxA = String(a["N° CX"] || '').toUpperCase();
                 const strCxB = String(b["N° CX"] || '').toUpperCase();
                 if (strCxA < strCxB) return -1;
                 if (strCxA > strCxB) return 1;
                 
-                // 3º Critério: SKU
                 const itemA = String(a["SKU"] || '').toUpperCase();
                 const itemB = String(b["SKU"] || '').toUpperCase();
                 if (itemA < itemB) return -1;
@@ -1820,7 +1854,6 @@
             });
         }
 
-        // EXPORTAÇÃO GLOBAL DE TODOS OS SETORES
         function exportarExcel() {
             let dadosExportacao = [];
             
@@ -1830,7 +1863,6 @@
                 itens.forEach(item => {
                     const txtDevolvido = item.devolvido ? 'Já Devolvido' : 'Não Devolvido';
                     
-                    // Se estiver carregando histórico antigo sem subItens
                     const subItensToProcess = item.subItens || [{
                         locacaoAntiga: item.locacaoAntiga || "-",
                         numCaixa: item.numCaixa || "-",
@@ -1840,11 +1872,14 @@
                     }];
 
                     subItensToProcess.forEach(sub => {
+                        // NOVO: Se a caixa foi 100% esvaziada, não exporta pro excel
+                        if(sub.qtd <= 0) return; 
+
                         const linhaObj = {
                             "LOCAÇÃO ANTIGA": sub.locacaoAntiga,
                             "SKU": tratarDadoNumerico(item.item),
                             "QUANTIDADE RESGATADA": sub.qtd,
-                            "LOTE": sub.loteOriginal, // Lote original do subitem
+                            "LOTE": sub.loteOriginal, 
                             "N° CX": tratarDadoNumerico(sub.numCaixa),
                             "DESTINO": item.destino,
                             "QUAL RESGATE": pos.nome,
@@ -1853,31 +1888,29 @@
                             "VALOR": sub.valorTotal, 
                             "STATUS (NO SISTEMA)": item.indisponivel ? "Indisponível / Falta" : (item.checado ? "Concluído" : "Pendente"),
                             "JÁ DEVOLVIDO?": txtDevolvido,
-                            "_indisponivel": item.indisponivel // flag temporária
+                            "_indisponivel": item.indisponivel 
                         };
                         dadosExportacao.push(linhaObj);
                     });
                 });
             });
 
-            // Aplica a ordenação EXATA antes de jogar no Excel
             ordenarDadosExportacao(dadosExportacao);
 
             const linhasVermelhas = [];
-            // Remove a flag temporária e descobre onde estão as linhas vermelhas agora
             dadosExportacao.forEach((linha, idx) => {
                 if (linha._indisponivel) {
-                    linhasVermelhas.push(idx + 1); // +1 pq linha 0 é o cabeçalho
+                    linhasVermelhas.push(idx + 1); 
                 }
                 delete linha._indisponivel;
             });
 
             const worksheet = XLSX.utils.json_to_sheet(dadosExportacao);
-            const range = XLSX.utils.decode_range(worksheet['!ref']);
+            const range = XLSX.utils.decode_range(worksheet['!ref'] || "A1");
             
             for(let R = range.s.r; R <= range.e.r; R++) {
                 if (R > 0) {
-                    const cellValor = worksheet[XLSX.utils.encode_cell({r: R, c: 9})]; // Coluna J (VALOR)
+                    const cellValor = worksheet[XLSX.utils.encode_cell({r: R, c: 9})]; 
                     if(cellValor) {
                         cellValor.t = 'n'; 
                         cellValor.z = '"R$ "#,##0.00'; 
@@ -1901,7 +1934,6 @@
             XLSX.writeFile(workbook, "Relatorio_Resgates_GLOBAL.xlsx");
         }
 
-        // EXPORTAÇÃO ESPECÍFICA DO SETOR ATUAL
         function exportarExcelSetor() {
             const posicao = window.posicaoAtual;
             if (!posicao) return;
@@ -1926,6 +1958,9 @@
                 }];
 
                 subItensToProcess.forEach(sub => {
+                    // NOVO: Se a caixa foi 100% esvaziada, não exporta pro excel
+                    if(sub.qtd <= 0) return; 
+
                     const linhaObj = {
                         "LOCAÇÃO ANTIGA": sub.locacaoAntiga,
                         "SKU": tratarDadoNumerico(item.item),
@@ -1945,7 +1980,6 @@
                 });
             });
 
-            // Aplica a ordenação EXATA antes de jogar no Excel
             ordenarDadosExportacao(dadosExportacao);
 
             const linhasVermelhas = [];
@@ -1957,11 +1991,11 @@
             });
 
             const worksheet = XLSX.utils.json_to_sheet(dadosExportacao);
-            const range = XLSX.utils.decode_range(worksheet['!ref']);
+            const range = XLSX.utils.decode_range(worksheet['!ref'] || "A1");
             
             for(let R = range.s.r; R <= range.e.r; R++) {
                 if (R > 0) {
-                    const cellValor = worksheet[XLSX.utils.encode_cell({r: R, c: 9})]; // Coluna J (VALOR)
+                    const cellValor = worksheet[XLSX.utils.encode_cell({r: R, c: 9})]; 
                     if(cellValor) {
                         cellValor.t = 'n'; 
                         cellValor.z = '"R$ "#,##0.00'; 
