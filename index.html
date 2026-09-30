@@ -130,11 +130,8 @@
         .btn-voltar:hover { color: #2d3748; }
         
         .lista-header { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;}
-        
-        /* LINHA DE TÍTULO E ESTATÍSTICAS REFORMULADA */
-        .header-title-row { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 5px; }
-        .header-title-row h3 { margin: 0; color: #001529; font-size: 1.6rem;}
-        #detalhes-stats { color: #2c5282; font-size: 0.9rem; font-weight: 700; background: #ebf8ff; padding: 6px 12px; border-radius: 6px; border: 1px solid #bee3f8; display: inline-block; }
+        .header-title-row { display: flex; justify-content: space-between; align-items: center; }
+        .header-title-row h3 { margin: 0; color: #001529; font-size: 1.5rem;}
         
         /* Abas Internas */
         .detalhes-tabs { display: flex; gap: 15px; border-bottom: 2px solid #e2e8f0; margin-bottom: 15px; }
@@ -162,6 +159,7 @@
         .btn-selecionar-todos:hover { background-color: #2b6cb0; }
         .btn-desfazer-todos { background-color: #718096; color: white; border: none; padding: 8px 13px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600; transition: background 0.2s; }
         .btn-desfazer-todos:hover { background-color: #4a5568; }
+
         .btn-limpar-filtros { background-color: #fff; color: #d97706; border: 1px solid #d97706; padding: 8px 13px; border-radius: 7px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 0.82rem; transition: background 0.2s; }
         .btn-limpar-filtros:hover { background-color: #fef3c7; }
 
@@ -183,6 +181,7 @@
         .btn-exportar-setor { background:#0ea5e9; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; }
         .btn-exportar-setor:hover { background:#0284c7; }
         
+        /* NOVO BOTÃO DE AJUSTE AUTOMÁTICO */
         .btn-ajuste-qtd { background:#059669; color:#fff; border:none; padding:8px 13px; border-radius:7px; cursor:pointer; font-family:inherit; font-weight:700; font-size:0.82rem; transition: background 0.2s; display: none; }
         .btn-ajuste-qtd:hover { background:#047857; }
 
@@ -654,6 +653,28 @@
         }
 
         // ==========================================
+        // FUNÇÃO DE ORDENAÇÃO GLOBAL DE EXIBIÇÃO
+        // ==========================================
+        function ordenarDadosExibicao() {
+            mapeamentoColunas.forEach(pos => {
+                if(window.dadosResgates[pos.nome]) {
+                    window.dadosResgates[pos.nome].sort((a, b) => {
+                        const destA = String(a.destino || '').toUpperCase();
+                        const destB = String(b.destino || '').toUpperCase();
+                        
+                        // Ordenação natural (numérica e alfabética combinada)
+                        const cmp = destA.localeCompare(destB, undefined, { numeric: true, sensitivity: 'base' });
+                        if (cmp !== 0) return cmp;
+                        
+                        const itemA = String(a.item || '').toUpperCase();
+                        const itemB = String(b.item || '').toUpperCase();
+                        return itemA.localeCompare(itemB, undefined, { numeric: true, sensitivity: 'base' });
+                    });
+                }
+            });
+        }
+
+        // ==========================================
         // PROCESSAMENTO DA PLANILHA PRINCIPAL
         // ==========================================
         document.getElementById('excel-file').addEventListener('change', function(e) {
@@ -719,19 +740,15 @@
                 let atualizados = 0;
                 Object.keys(window.dadosResgates).forEach(posicao => {
                     window.dadosResgates[posicao].forEach(item => {
-                        // REGRA: Atualizar SOMENTE itens PENDENTES e NÃO-INDISPONÍVEIS
                         if (!item.checado && !item.indisponivel) { 
                             if (mapaUpdate[item.item.toUpperCase()] !== undefined) {
                                 let novaLoc = mapaUpdate[item.item.toUpperCase()];
                                 const valUpper = item.validacao.toUpperCase();
                                 
-                                // REGRAS DE DESTINO X LOC FIXA ATUALIZADAS
                                 if (valUpper === "CONFORME" || valUpper === "APROVADO" || valUpper === "CONFORME E APROVADO") {
-                                    // Se for aprovado, o destino que muda
                                     item.destino = novaLoc;
                                     item.locFixa = ""; 
                                 } else {
-                                    // Se não for aprovado, muda a loc fixa
                                     if (novaLoc.toUpperCase() === item.destino.toUpperCase()) {
                                         novaLoc = "";
                                     }
@@ -744,6 +761,7 @@
                 });
 
                 if (atualizados > 0) {
+                    ordenarDadosExibicao(); // Reordena a lista após atualizar os destinos
                     salvarEstado();
                     alert(`${atualizados} item(ns) pendente(s) tiveram sua locação/destino atualizados!`);
                     renderizarPastas();
@@ -891,7 +909,6 @@
                 let locFixa = "";
                 const valUpper = validacao.toUpperCase();
                 
-                // NO CARREGAMENTO INICIAL, GARANTE QUE APROVADOS NÃO TENHAM LOC FIXA
                 if (valUpper !== "CONFORME" && valUpper !== "APROVADO" && valUpper !== "CONFORME E APROVADO") {
                     locFixa = mapaLocFixa[item.toUpperCase()] || "Não cadastrada";
                     
@@ -951,9 +968,9 @@
                                     locacaoAntiga: locacaoAntiga,
                                     numCaixa: numCaixa,
                                     qtd: qtdResgate,
-                                    qtdOriginal: qtdResgate,
+                                    qtdOriginal: qtdResgate, 
                                     valorTotal: valorTotal,
-                                    valorOriginal: valorTotal,
+                                    valorOriginal: valorTotal, 
                                     loteOriginal: lote
                                 }]
                             });
@@ -962,20 +979,8 @@
                 });
             }
 
-            mapeamentoColunas.forEach(pos => {
-                window.dadosResgates[pos.nome].sort((a, b) => {
-                    const destA = String(a.destino).toUpperCase();
-                    const destB = String(b.destino).toUpperCase();
-                    if (destA < destB) return -1;
-                    if (destA > destB) return 1;
-                    
-                    const itemA = String(a.item).toUpperCase();
-                    const itemB = String(b.item).toUpperCase();
-                    if (itemA < itemB) return -1;
-                    if (itemA > itemB) return 1;
-                    return 0;
-                });
-            });
+            // Aplicando a ordenação natural logo após o processamento
+            ordenarDadosExibicao();
 
             window.planilhaCarregada = true;
             salvarEstado();
@@ -1280,6 +1285,7 @@
             
             if (novo !== null && novo.trim() !== "") {
                 window.dadosResgates[posicaoNome][index].destino = novo.trim();
+                ordenarDadosExibicao(); // Reordena a lista logo após editar manual
                 salvarEstado();
                 atualizarDropdowns();
                 renderizarListaItens();
@@ -1752,7 +1758,6 @@
                     </div>
                 </div>
 
-                <!-- ABA: SOBRAS DE CONSIDERAÇÃO ATUALIZADA -->
                 <div id="dash-view-sobras" style="display: none;">
                     <table class="dashboard-table">
                         <thead><tr><th>Setor</th><th>Locação Antiga</th><th>Nº CX</th><th>SKU</th><th>Quantidade Retirada</th><th>Valor Retirado</th></tr></thead>
@@ -1792,7 +1797,6 @@
                 if(itensValidos.length > 0) {
                     itensValidos.forEach(i => {
                         
-                        // CHECANDO SOBRAS E PREENCHENDO A TABELA
                         if(i.subItens) {
                             i.subItens.forEach(sub => {
                                 const retirada = sub.qtdOriginal - sub.qtd;
@@ -1813,7 +1817,6 @@
                             });
                         }
 
-                        // SOMA APENAS SE A QUANTIDADE > 0
                         if (i.qtd > 0) {
                             countItensAtivos++;
                             valorPosicao += i.valorTotal; 
@@ -1863,7 +1866,6 @@
                 window.dashDataChart.naoDevolvidas.push(pecasNaoDevolvidas);
             });
 
-            // FECHAMENTO DA TABELA PRINCIPAL
             const percentualGeral = totalLinhasGeral > 0 ? Math.round((totalItensConcluidosGeral / totalLinhasGeral) * 100) : 0;
             htmlTbody += `<tr class="row-total">
                 <td>Total</td>
@@ -1879,7 +1881,6 @@
             </tr>`;
             document.getElementById('dash-tbody').innerHTML = htmlTbody;
 
-            // FECHAMENTO DA TABELA DE SOBRAS
             if(htmlSobras === '') {
                 htmlSobras = `<tr><td colspan="6" class="center-cell" style="background-color:#f4f5f7; color: #718096;">Nenhum item retirado da consideração original.</td></tr>`;
             } else {
